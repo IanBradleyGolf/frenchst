@@ -1,3 +1,5 @@
+import { circuitColor, circuitsOf, spanningLinks } from './circuits';
+import { isVisible } from './layers';
 import * as XLSX from 'xlsx';
 import { PDFDocument, StandardFonts, rgb, degrees, type PDFPage, type PDFFont } from 'pdf-lib';
 import { planBytes } from './pdf';
@@ -164,7 +166,16 @@ export async function exportPdf(project: Project, opts: { labels: boolean; rooms
       page.setCropBox(c.x1 * s, H - c.y2 * s, (c.x2 - c.x1) * s, (c.y2 - c.y1) * s);
       page.setMediaBox(c.x1 * s, H - c.y2 * s, (c.x2 - c.x1) * s, (c.y2 - c.y1) * s);
     }
-    for (const it of floor.items) {
+    const visible = floor.items.filter((x) => isVisible(data, x));
+    for (const [name, list] of circuitsOf({ ...floor, items: visible })) {
+      const col = hex(circuitColor(name));
+      for (const [a, b] of spanningLinks(list)) {
+        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, dx = b.x - a.x, dy = b.y - a.y;
+        const cx = mx - dy * 0.18, cy = my + dx * 0.18;
+        page.drawSvgPath(`M${(a.x * s).toFixed(2)} ${(a.y * s - H).toFixed(2)} Q${(cx * s).toFixed(2)} ${(cy * s - H).toFixed(2)} ${(b.x * s).toFixed(2)} ${(b.y * s - H).toFixed(2)}`, { x: 0, y: 0, borderColor: col, borderWidth: 0.6, borderDashArray: [3, 2] });
+      }
+    }
+    for (const it of visible) {
       const c = lib.get(it.code) ?? unknownComponent(it.code);
       drawSymbol(page, bold, c, it.x * s, it.y * s, it.rot, data.symbolSize * s, H);
       if (opts.labels) {

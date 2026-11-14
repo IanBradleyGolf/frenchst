@@ -9,6 +9,8 @@ import { EXTENT } from '../symbols';
 import type { Floor, Item } from '../types';
 import { SymbolShape } from './SymbolShape';
 import { createRoom } from '../rooms';
+import { isVisible } from '../layers';
+import { circuitColor, circuitsOf, spanningLinks, wireTogether } from '../circuits';
 
 const RENDER_SCALE = 3;
 const DWELLING_COLORS = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed'];
@@ -18,7 +20,8 @@ export function dwellingColor(dwellings: string[], d: string) {
   return DWELLING_COLORS[(i < 0 ? 4 : i) % DWELLING_COLORS.length];
 }
 
-export function PlanCanvas({ floor, showLabels, showRooms }: { floor: Floor; showLabels: boolean; showRooms: boolean }) {
+export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: { floor: Floor; showLabels: boolean; showRooms: boolean; showWires?: boolean }) {
+  const [wireFrom, setWireFrom] = useState<Item | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -41,6 +44,7 @@ export function PlanCanvas({ floor, showLabels, showRooms }: { floor: Floor; sho
 
   const lib = useMemo(() => libraryMap(data), [data]);
   const sz = data.symbolSize;
+  const shown = useMemo(() => floor.items.filter((it) => isVisible(data, it)), [floor.items, data]);
   const selectedIds = selection.kind === 'items' ? new Set(selection.ids) : new Set<string>();
 
   // Container size
@@ -92,6 +96,10 @@ export function PlanCanvas({ floor, showLabels, showRooms }: { floor: Floor; sho
       window.removeEventListener('keyup', up);
     };
   }, []);
+
+  useEffect(() => {
+    if (tool !== 'wire') setWireFrom(null);
+  }, [tool]);
 
   const v: View = view ?? { zoom: 1, x: 0, y: 0 };
 
@@ -223,7 +231,7 @@ export function PlanCanvas({ floor, showLabels, showRooms }: { floor: Floor; sho
       const x1 = Math.min(marquee.x1, marquee.x2), x2 = Math.max(marquee.x1, marquee.x2);
       const y1 = Math.min(marquee.y1, marquee.y2), y2 = Math.max(marquee.y1, marquee.y2);
       if (x2 - x1 > 2 / v.zoom || y2 - y1 > 2 / v.zoom) {
-        const hit = floor.items.filter((it) => it.x >= x1 && it.x <= x2 && it.y >= y1 && it.y <= y2).map((it) => it.id);
+        const hit = shown.filter((it) => it.x >= x1 && it.x <= x2 && it.y >= y1 && it.y <= y2).map((it) => it.id);
         const prev = e.evt.shiftKey && selection.kind === 'items' ? selection.ids : [];
         select(hit.length || prev.length ? { kind: 'items', ids: [...new Set([...prev, ...hit])] } : { kind: 'none' });
       }
@@ -241,6 +249,15 @@ export function PlanCanvas({ floor, showLabels, showRooms }: { floor: Floor; sho
   }
 
   function itemDown(e: Konva.KonvaEventObject<MouseEvent>, it: Item) {
+    if (tool === 'wire' && e.evt.button === 0) {
+      e.cancelBubble = true;
+      if (!wireFrom) setWireFrom(it);
+      else {
+        wireTogether(floor, wireFrom, it);
+        setWireFrom(e.evt.shiftKey ? wireFrom : it); // keep chaining from the last light
+      }
+      return;
+    }
     if (tool !== 'select' || space || e.evt.button !== 0) return;
     e.cancelBubble = true;
     if (e.evt.shiftKey) {
@@ -356,7 +373,37 @@ export function PlanCanvas({ floor, showLabels, showRooms }: { floor: Floor; sho
               <Line points={[floor.axis.x1, floor.axis.y1, floor.axis.x2, floor.axis.y2]} stroke="#e11d48" strokeWidth={1.5 / v.zoom} dash={[10 / v.zoom, 4 / v.zoom, 2 / v.zoom, 4 / v.zoom]} listening={false} />
             )}
 
-            {floor.items.map((it) => {
+            {showWires &&
+              [...circuitsOf({ ...floor, items: shown }).entries()].map(([name, list]) => {
+                const col = circuitColor(name);
+                const live = list.map((it) => (drag && selectedIds.has(it.id) ? { ...it, x: it.x + drag.dx, y: it.y + drag.dy } : it));
+                const allSel = list.every((it) => selectedIds.has(it.id));
+                return spanningLinks(live).map(([a, b], k) => {
+                  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+                  const dx = b.x - a.x, dy = b.y - a.y;
+                  const bend = 0.18;
+                  return (
+                    <Line
+                      key={`${name}-${k}`}
+                      points={[a.x, a.y, mx - dy * bend, my + dx * bend, b.x, b.y]}
+                      tension={0.5}
+                      stroke={col}
+                      strokeWidth={(allSel ? 2.2 : 1.3) / v.zoom}
+                      dash={[6 / v.zoom, 4 / v.zoom]}
+                      hitStrokeWidth={8 / v.zoom}
+                      onMouseDown={(e) => {
+                        if (tool !== 'select') return;
+                        e.cancelBubble = true;
+                        select({ kind: 'items', ids: list.map((i) => i.id) });
+                      }}
+                    />
+                  );
+                });
+              })}
+            {tool === 'wire' && wireFrom && cursor && (
+              <Line points={[wireFrom.x, wireFrom.y, cursor.x, cursor.y]} stroke="#dc2626" strokeWidth={1.5 / v.zoom} dash={[6 / v.zoom, 4 / v.zoom]} listening={false} />
+            )}
+            {shown.map((it) => {
               const c = lib.get(it.code) ?? unknownComponent(it.code);
               const sel = selectedIds.has(it.id);
               const off = drag && sel && drag.id !== it.id ? drag : null;
@@ -430,6 +477,7 @@ export function PlanCanvas({ floor, showLabels, showRooms }: { floor: Floor; sho
       {tool === 'room' && <div className="canvas-tip">Click corners. Click the first point, double-click or press Enter to finish. Esc cancels.</div>}
       {tool === 'calibrate' && draft.length < 4 && <div className="canvas-tip">Click two points a known distance apart, e.g. the ends of a dimensioned wall.</div>}
       {tool === 'axis' && <div className="canvas-tip">Click two points along the party wall. Items are mirrored across this line.</div>}
+      {tool === 'wire' && <div className="canvas-tip">{wireFrom ? `Click the next light to wire it to ${wireFrom.code}${wireFrom.circuit ? ' on ' + wireFrom.circuit : ''}. Esc to finish.` : 'Click a light to start a wire, then click the lights to join to it.'}</div>}
       {tool === 'crop' && <div className="canvas-tip">Drag a box around the part of the sheet to keep, e.g. just the dwelling. Esc cancels.</div>}
       {tool === 'place' && <div className="canvas-tip">Click to place. Esc or V to stop placing.</div>}
     </div>

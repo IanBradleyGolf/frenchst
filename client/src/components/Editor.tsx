@@ -4,8 +4,10 @@ import { useFloor, useStore } from '../store';
 import { exportExcel, exportPdf } from '../export';
 import { uid } from '../geometry';
 import { LeftPanel } from './LeftPanel';
+import { ImportDialog } from './ImportDialog';
 import { Splitter, usePanelWidth } from './Splitter';
 import { createRoom } from '../rooms';
+import { linkSelected, unlinkSelected } from '../circuits';
 import { RightPanel, mirrorCopy } from './RightPanel';
 import { PlanCanvas, isTyping } from './PlanCanvas';
 import type { Tool } from '../types';
@@ -146,6 +148,9 @@ function useShortcuts() {
       if (k === 'h') return st.setTool('pan');
       if (k === 'n') return st.setTool('room');
       if (k === 'c') return st.setTool('crop');
+      if (k === 'w') return st.setTool('wire');
+      if (k === 'l' && selIds.size) return linkSelected(floor);
+      if (k === 'u' && selIds.size) return unlinkSelected(floor);
       if (k === 'f') return st.requestFit();
     };
     window.addEventListener('keydown', h);
@@ -157,6 +162,7 @@ const TOOLS: { t: Tool; label: string; key: string; icon: string }[] = [
   { t: 'select', label: 'Select', key: 'V', icon: 'M4 2l12 8-5 1.5L8.5 17z' },
   { t: 'pan', label: 'Pan', key: 'H', icon: 'M10 2v16M2 10h16M10 2l-2.5 2.5M10 2l2.5 2.5M10 18l-2.5-2.5M10 18l2.5-2.5M2 10l2.5-2.5M2 10l2.5 2.5M18 10l-2.5-2.5M18 10l-2.5 2.5' },
   { t: 'room', label: 'Room', key: 'N', icon: 'M3 3h14v14H3z M3 10h6v7' },
+  { t: 'wire', label: 'Wire', key: 'W', icon: 'M3 16 C 6 4, 14 4, 17 16 M3 16a1.5 1.5 0 1 0 .01 0 M17 16a1.5 1.5 0 1 0 .01 0' },
   { t: 'crop', label: 'Crop', key: 'C', icon: 'M5 1v14h14 M1 5h14v14' },
 ];
 
@@ -173,6 +179,8 @@ export function Editor({ onBack }: { onBack: () => void }) {
   const { setTool, undo, redo, rename } = useStore.getState();
   const [showLabels, setShowLabels] = useState(true);
   const [showRooms, setShowRooms] = useState(true);
+  const [showWires, setShowWires] = useState(true);
+  const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
   const [leftW, setLeftW, leftDef] = usePanelWidth('fs.leftWidth', 270, 180, 560);
   const [rightW, setRightW, rightDef] = usePanelWidth('fs.rightWidth', 330, 240, 720);
@@ -208,6 +216,7 @@ export function Editor({ onBack }: { onBack: () => void }) {
           <button onClick={redo} disabled={!future} title="Redo (Ctrl+Y)">Redo</button>
         </div>
         <span className="grow" />
+        <button onClick={() => setImporting(true)} disabled={!floor} title="Import components from LA Lounge, Switch or other PDFs onto this floor">Import…</button>
         <button onClick={() => exportExcel(project)} disabled={!project.data.floors.length}>Export Excel</button>
         <button className="primary" onClick={doPdf} disabled={!project.data.floors.length || !!exporting}>{exporting ?? 'Export PDF'}</button>
       </header>
@@ -227,12 +236,13 @@ export function Editor({ onBack }: { onBack: () => void }) {
         </div>
       )}
       {saveState === 'error' && <div className="banner warn">Could not save: {saveError}. Retrying on your next change.</div>}
+      {importing && floor && <ImportDialog floor={floor} onClose={() => setImporting(false)} />}
       <div className="workspace" style={{ gridTemplateColumns: `${leftW}px 6px minmax(0, 1fr) 6px ${rightW}px` }}>
         <LeftPanel />
         <Splitter side="left" width={leftW} setWidth={setLeftW} def={leftDef} />
         <main className="center">
           {floor ? (
-            <PlanCanvas key={floor.id} floor={floor} showLabels={showLabels} showRooms={showRooms} />
+            <PlanCanvas key={floor.id} floor={floor} showLabels={showLabels} showRooms={showRooms} showWires={showWires} />
           ) : (
             <div className="empty">
               <h2>No floor selected</h2>
@@ -241,7 +251,7 @@ export function Editor({ onBack }: { onBack: () => void }) {
           )}
         </main>
         <Splitter side="right" width={rightW} setWidth={setRightW} def={rightDef} />
-        <RightPanel showLabels={showLabels} setShowLabels={setShowLabels} showRooms={showRooms} setShowRooms={setShowRooms} />
+        <RightPanel showLabels={showLabels} setShowLabels={setShowLabels} showRooms={showRooms} setShowRooms={setShowRooms} showWires={showWires} setShowWires={setShowWires} />
       </div>
     </div>
   );

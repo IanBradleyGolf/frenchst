@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import { pageCount, pageSize } from '../pdf';
 import { pageLabels, type Label } from '../pdftext';
-import { classify, defaultMapping, similarity, type Pt } from '../importer';
+import { classify, defaultMapping, similarity, snapToWires, type Pt } from '../importer';
+import { groupsFromLinks, pageWires, type Wire } from '../wires';
 import { uid } from '../geometry';
 import { useStore } from '../store';
 import { DEFAULT_LIBRARY } from '../library';
@@ -26,6 +27,9 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [replace, setReplace] = useState(false);
   const [area, setArea] = useState(floor.importArea ?? null);
+  const [wires, setWires] = useState<Wire[]>([]);
+  const [useWires, setUseWires] = useState(true);
+  const [layer, setLayer] = useState('');
   const [areaMode, setAreaMode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,10 +53,12 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
     if (!planId || !page) return;
     setLabels(null);
     setSrcPts([]);
+    setWires([]);
     Promise.all([pageSize(planId, page), pageLabels(planId, page)]).then(([s, l]) => {
       setSrc(s);
       setLabels(l);
     });
+    pageWires(planId, page).then(setWires).catch(() => setWires([]));
   }, [planId, page]);
 
   const groups = useMemo(() => (labels ? classify(labels) : new Map<string, Label[]>()), [labels]);
@@ -65,23 +71,43 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
   const xf = srcPts.length === 2 && dstPts.length === 2 ? similarity(srcPts[0], srcPts[1], dstPts[0], dstPts[1]) : null;
   const lib = new Map(library.map((c) => [c.code, c]));
 
-  const planned = useMemo(() => {
-    if (!xf) return [];
-    const out: { code: string; x: number; y: number; color: string }[] = [];
+  // Labels to import, in source coordinates, before alignment.
+  const chosen = useMemo(() => {
+    const out: { code: string; x: number; y: number; light: boolean }[] = [];
     for (const [k, list] of groups) {
       const code = mapping[k];
       if (!code) continue;
+      const light = /^(DL|WL|P|LED|LL|UP|GS|SP|LP)/.test(k);
       for (const l of list) {
         if (src && (l.x < 0 || l.y < 0 || l.x > src.width || l.y > src.height)) continue; // text outside the visible page
-        const p = xf.apply(l);
-        if (p.x < 0 || p.y < 0 || p.x > floor.width || p.y > floor.height) continue;
-        if (area && (p.x < area.x1 || p.x > area.x2 || p.y < area.y1 || p.y > area.y2)) continue;
-        out.push({ code, x: p.x, y: p.y, color: lib.get(code)?.color ?? '#64748b' });
+        out.push({ code, x: l.x, y: l.y, light });
       }
     }
     return out;
+  }, [groups, mapping, src]);
+
+  // Snap lights onto LA-style wire endpoints and collect the wiring links.
+  const snap = useMemo(() => {
+    const lightIdx = chosen.map((c, i) => (c.light ? i : -1)).filter((i) => i >= 0);
+    if (!useWires || !wires.length || !lightIdx.length) return null;
+    const r = snapToWires(lightIdx.map((i) => chosen[i]), wires);
+    const pos = chosen.map((c) => ({ x: c.x, y: c.y }));
+    lightIdx.forEach((ci, k) => (pos[ci] = r.pos[k]));
+    return { pos, links: r.links.map(([a, b]) => [lightIdx[a], lightIdx[b]] as [number, number]), snapped: r.snapped.filter(Boolean).length };
+  }, [chosen, wires, useWires]);
+
+  const planned = useMemo(() => {
+    if (!xf) return [];
+    const out: { i: number; code: string; x: number; y: number; color: string }[] = [];
+    chosen.forEach((c, i) => {
+      const p = xf.apply(snap ? snap.pos[i] : c);
+      if (p.x < 0 || p.y < 0 || p.x > floor.width || p.y > floor.height) return;
+      if (area && (p.x < area.x1 || p.x > area.x2 || p.y < area.y1 || p.y > area.y2)) return;
+      out.push({ i, code: c.code, x: p.x, y: p.y, color: lib.get(c.code)?.color ?? '#64748b' });
+    });
+    return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [xf?.scale, xf?.rotationDeg, srcPts, dstPts, groups, mapping, floor.width, floor.height, area]);
+  }, [xf?.scale, xf?.rotationDeg, srcPts, dstPts, chosen, snap, floor.width, floor.height, area]);
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -102,18 +128,36 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
   const missingStd = DEFAULT_LIBRARY.filter((c) => !lib.has(c.code));
 
   function doImport() {
-    const codes = new Set(planned.map((p) => p.code));
-    const items = planned.map((p) => ({ id: uid(), code: p.code, x: p.x, y: p.y, rot: 0 }));
+    const layerName = layer.trim() || defaultLayer;
+    const items: { id: string; code: string; x: number; y: number; rot: number; circuit?: string; layer?: string }[] = planned.map((p) => ({ id: uid(), code: p.code, x: p.x, y: p.y, rot: 0, layer: layerName }));
+    if (snap && snap.links.length) {
+      const idx = new Map(planned.map((p, k) => [p.i, k]));
+      const links = snap.links.map(([a, b]) => [idx.get(a), idx.get(b)]).filter(([a, b]) => a !== undefined && b !== undefined) as [number, number][];
+      const root = groupsFromLinks(items.length, links);
+      const size = new Map<number, number>();
+      root.forEach((r) => size.set(r, (size.get(r) ?? 0) + 1));
+      let next = nextCircuitNumber(floor);
+      const names = new Map<number, string>();
+      root.forEach((r, k) => {
+        if ((size.get(r) ?? 0) < 2) return;
+        if (!names.has(r)) names.set(r, `C${String(next++).padStart(2, '0')}`);
+        items[k].circuit = names.get(r);
+      });
+    }
     mutate((d) => {
       const f = d.floors.find((x) => x.id === floor.id)!;
       if (area) f.importArea = area;
-      if (replace) f.items = f.items.filter((i) => !codes.has(i.code) || (area && (i.x < area.x1 || i.x > area.x2 || i.y < area.y1 || i.y > area.y2)));
+      if (replace) f.items = f.items.filter((i) => i.layer !== layerName);
+      d.hiddenLayers = (d.hiddenLayers ?? []).filter((h) => h !== layerName);
       f.items.push(...items);
     });
     select({ kind: 'items', ids: items.map((i) => i.id) });
     onClose();
   }
 
+  const planFile = plans.find((p) => p.id === planId);
+  const defaultLayer = planFile ? planFile.fileName.replace(/\.pdf$/i, '').replace(/^\d+\s+/, '').replace(/\s*-\s*Dwelling 2$/i, '') : 'Imported';
+  const existingLayers = [...new Set(project.data.floors.flatMap((f) => f.items.map((i) => i.layer).filter(Boolean) as string[]))];
   const keys = [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
   const step = !page ? 1 : !xf ? 2 : 3;
 
@@ -212,7 +256,13 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
                   Add {missingStd.length} standard components missing from this project
                 </button>
               )}
-              <label className="check"><input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} /> Replace existing items of these types on this floor</label>
+              {wires.length > 0 && (
+                <label className="check"><input type="checkbox" checked={useWires} onChange={(e) => setUseWires(e.target.checked)} /> Use the drawing's {wires.length} wiring lines: snap lights to their symbols ({snap?.snapped ?? 0}) and import circuits</label>
+              )}
+              <label htmlFor="imp-layer" className="small">Layer</label>
+              <input id="imp-layer" list="imp-layers" value={layer} placeholder={defaultLayer} onChange={(e) => setLayer(e.target.value)} />
+              <datalist id="imp-layers">{existingLayers.map((l) => <option key={l} value={l} />)}</datalist>
+              <label className="check"><input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} /> Replace what this layer already has on this floor</label>
               <p className="muted small">Items are placed at their label, which usually sits just beside the symbol on the source drawing. Nudge them as needed.</p>
               <button className="primary" disabled={!xf || planned.length === 0} onClick={doImport}>
                 {xf ? `Import ${planned.length} items` : 'Set points A and B on both plans'}
@@ -223,4 +273,13 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
       </div>
     </div>
   );
+}
+
+function nextCircuitNumber(floor: Floor) {
+  let n = 0;
+  for (const it of floor.items) {
+    const m = it.circuit?.match(/^C(\d+)$/);
+    if (m) n = Math.max(n, Number(m[1]));
+  }
+  return n + 1;
 }

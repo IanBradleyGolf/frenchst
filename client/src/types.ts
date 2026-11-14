@@ -60,6 +60,7 @@ export interface Item {
   y: number;
   rot: number; // degrees
   circuit?: string;
+  layer?: string; // where it came from, e.g. "LA Lounge lighting"; undefined = drawn by hand
   note?: string;
 }
 
@@ -90,6 +91,7 @@ export interface ProjectData {
   dwellings: string[];
   symbolSize: number; // symbol radius in page points
   copies?: number; // identical dwellings built from this layout (default 2)
+  hiddenLayers?: string[];
   library: Component[];
   floors: Floor[];
 }
@@ -123,4 +125,4 @@ export interface Revision {
   createdBy: string | null;
 }
 
-export type Tool = 'select' | 'pan' | 'place' | 'room' | 'calibrate' | 'axis' | 'crop';
+export type Tool = 'select' | 'pan' | 'place' | 'room' | 'calibrate' | 'axis' | 'crop' | 'wire';

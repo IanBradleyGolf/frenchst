@@ -7,8 +7,9 @@ import { api } from '../api';
 import type { Floor, ProjectData, Revision } from '../types';
 import { dwellingColor } from './PlanCanvas';
 import { ImportDialog } from './ImportDialog';
+import { linkSelected, unlinkSelected } from '../circuits';
 
-export function RightPanel({ showLabels, setShowLabels, showRooms, setShowRooms }: { showLabels: boolean; setShowLabels: (v: boolean) => void; showRooms: boolean; setShowRooms: (v: boolean) => void }) {
+export function RightPanel({ showLabels, setShowLabels, showRooms, setShowRooms, showWires, setShowWires }: { showLabels: boolean; setShowLabels: (v: boolean) => void; showRooms: boolean; setShowRooms: (v: boolean) => void; showWires: boolean; setShowWires: (v: boolean) => void }) {
   const tab = useStore((s) => s.rightTab);
   const { setRightTab } = useStore.getState();
   const floor = useFloor();
@@ -22,7 +23,7 @@ export function RightPanel({ showLabels, setShowLabels, showRooms, setShowRooms 
         ))}
       </nav>
       <div className="tab-body">
-        {tab === 'properties' && (floor ? <Properties floor={floor} showLabels={showLabels} setShowLabels={setShowLabels} showRooms={showRooms} setShowRooms={setShowRooms} /> : <p className="muted pad">Add a floor to begin.</p>)}
+        {tab === 'properties' && (floor ? <Properties floor={floor} showLabels={showLabels} setShowLabels={setShowLabels} showRooms={showRooms} setShowRooms={setShowRooms} showWires={showWires} setShowWires={setShowWires} /> : <p className="muted pad">Add a floor to begin.</p>)}
         {tab === 'rooms' && (floor ? <Rooms floor={floor} /> : <p className="muted pad">Add a floor to begin.</p>)}
         {tab === 'schedule' && <Schedule />}
         {tab === 'revisions' && <Revisions />}
@@ -33,7 +34,7 @@ export function RightPanel({ showLabels, setShowLabels, showRooms, setShowRooms 
 
 /* ---------------- Properties ---------------- */
 
-function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms }: { floor: Floor; showLabels: boolean; setShowLabels: (v: boolean) => void; showRooms: boolean; setShowRooms: (v: boolean) => void }) {
+function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms, showWires, setShowWires }: { floor: Floor; showLabels: boolean; setShowLabels: (v: boolean) => void; showRooms: boolean; setShowRooms: (v: boolean) => void; showWires: boolean; setShowWires: (v: boolean) => void }) {
   const data = useStore((s) => s.project!.data);
   const selection = useStore((s) => s.selection);
   const tool = useStore((s) => s.tool);
@@ -70,7 +71,12 @@ function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms 
             </option>
           ))}
         </select>
-        <label htmlFor="pp-cct">Circuit / keypad group</label>
+        <div className="row gap wrap">
+          <button onClick={() => linkSelected(floor)} title="Put the selected lights on one circuit (L)">Wire together</button>
+          <button onClick={() => unlinkSelected(floor)} disabled={!items.some((i) => i.circuit)} title="Take the selected lights off their circuit (U)">Remove wiring</button>
+        </div>
+        {circuits.length === 1 && circuits[0] && <p className="muted small">Circuit {circuits[0]} has {floor.items.filter((i) => i.circuit === circuits[0]).length} lights.</p>}
+        <label htmlFor="pp-cct">Circuit</label>
         <input id="pp-cct" placeholder={circuits.length > 1 ? '(mixed)' : 'e.g. K1-2 or C04'} value={circuits.length === 1 ? circuits[0] : ''} onChange={(e) => updateSel((it) => (it.circuit = e.target.value || undefined), 'circuit')} />
         <label htmlFor="pp-note">Note</label>
         <textarea id="pp-note" rows={2} placeholder={notes.length > 1 ? '(mixed)' : ''} value={notes.length === 1 ? notes[0] : ''} onChange={(e) => updateSel((it) => (it.note = e.target.value || undefined), 'note')} />
@@ -127,10 +133,11 @@ function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms 
       <label htmlFor="sym-size">Symbol size</label>
       <input id="sym-size" type="range" min={1.5} max={10} step={0.5} value={data.symbolSize} onChange={(e) => mutate((d) => (d.symbolSize = Number(e.target.value)), 'symsize')} />
       <label className="check"><input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} /> Show codes</label>
+      <label className="check"><input type="checkbox" checked={showWires} onChange={(e) => setShowWires(e.target.checked)} /> Show wiring</label>
       <label className="check"><input type="checkbox" checked={showRooms} onChange={(e) => setShowRooms(e.target.checked)} /> Show rooms</label>
       <hr />
       <p className="muted small">
-        <b>Shortcuts</b><br />V select · H pan (or hold Space) · N new room · R rotate · Del delete · Ctrl+C / Ctrl+V copy and paste · Ctrl+D duplicate · M mirror copy · arrows nudge · Ctrl+Z / Ctrl+Y undo and redo · F fit
+        <b>Shortcuts</b><br />V select · H pan (or hold Space) · W wire · L wire selected together · U remove wiring · C crop · N new room · R rotate · Del delete · Ctrl+C / Ctrl+V copy and paste · Ctrl+D duplicate · M mirror copy · arrows nudge · Ctrl+Z / Ctrl+Y undo and redo · F fit
       </p>
     </div>
   );

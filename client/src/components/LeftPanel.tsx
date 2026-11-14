@@ -3,6 +3,7 @@ import { useStore } from '../store';
 import { svgFor } from '../symbols';
 import { FloorDialog } from './FloorDialog';
 import { ComponentDialog } from './ComponentDialog';
+import { layerCounts, layerOf } from '../layers';
 
 export function LeftPanel() {
   const data = useStore((s) => s.project!.data);
@@ -15,6 +16,7 @@ export function LeftPanel() {
   const [q, setQ] = useState('');
   const [renaming, setRenaming] = useState<string | null>(null);
 
+  const layers = useMemo(() => layerCounts(data), [data]);
   const counts = useMemo(() => {
     const m = new Map<string, number>();
     const f = data.floors.find((x) => x.id === floorId);
@@ -85,6 +87,27 @@ export function LeftPanel() {
           ))}
         </ul>
       </section>
+
+      {layers.length > 0 && (
+        <section className="panel-sec">
+          <div className="sec-head">
+            <h3>Layers</h3>
+          </div>
+          <ul className="layer-list">
+            {layers.map((l) => (
+              <li key={l.name} className={l.hidden ? 'off' : ''}>
+                <button className="icon eye" title={l.hidden ? 'Show layer' : 'Hide layer'} onClick={() => mutate((d) => { const h = new Set(d.hiddenLayers ?? []); h.has(l.name) ? h.delete(l.name) : h.add(l.name); d.hiddenLayers = [...h]; })}>
+                  {l.hidden ? '◌' : '●'}
+                </button>
+                <span className="layer-name" title={l.name}>{l.name}</span>
+                <span className="count">{l.count}</span>
+                <button className="icon" title="Delete this layer's items on every floor" onClick={() => { if (window.confirm(`Delete all ${l.count} items in "${l.name}"? You can undo this.`)) mutate((d) => { for (const f of d.floors) f.items = f.items.filter((i) => layerOf(i) !== l.name); d.hiddenLayers = (d.hiddenLayers ?? []).filter((h) => h !== l.name); }); }}>×</button>
+              </li>
+            ))}
+          </ul>
+          <p className="muted small">Hidden layers are left out of the plan, schedule and exports.</p>
+        </section>
+      )}
 
       <section className="panel-sec grow">
         <div className="sec-head">
