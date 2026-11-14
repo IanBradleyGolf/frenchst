@@ -7,6 +7,7 @@ import { LeftPanel } from './LeftPanel';
 import { ImportDialog } from './ImportDialog';
 import { Splitter, usePanelWidth } from './Splitter';
 import { createRoom } from '../rooms';
+import { deleteMark } from '../marks';
 import { linkSelected, unlinkSelected } from '../circuits';
 import { RightPanel, mirrorCopy } from './RightPanel';
 import { PlanCanvas, isTyping } from './PlanCanvas';
@@ -113,6 +114,11 @@ function useShortcuts() {
         st.select({ kind: 'none' });
         return;
       }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && (st.selection.kind === 'erase' || st.selection.kind === 'text')) {
+        e.preventDefault();
+        deleteMark(floor.id, st.selection);
+        return;
+      }
       if ((e.key === 'Delete' || e.key === 'Backspace') && st.selection.kind === 'room') {
         e.preventDefault();
         const rid = st.selection.id;
@@ -149,6 +155,8 @@ function useShortcuts() {
       if (k === 'n') return st.setTool('room');
       if (k === 'c') return st.setTool('crop');
       if (k === 'w') return st.setTool('wire');
+      if (k === 'e') return st.setTool('erase');
+      if (k === 't') return st.setTool('text');
       if (k === 'l' && selIds.size) return linkSelected(floor);
       if (k === 'u' && selIds.size) return unlinkSelected(floor);
       if (k === 'f') return st.requestFit();
@@ -164,6 +172,8 @@ const TOOLS: { t: Tool; label: string; key: string; icon: string }[] = [
   { t: 'room', label: 'Room', key: 'N', icon: 'M3 3h14v14H3z M3 10h6v7' },
   { t: 'wire', label: 'Wire', key: 'W', icon: 'M3 16 C 6 4, 14 4, 17 16 M3 16a1.5 1.5 0 1 0 .01 0 M17 16a1.5 1.5 0 1 0 .01 0' },
   { t: 'crop', label: 'Crop', key: 'C', icon: 'M5 1v14h14 M1 5h14v14' },
+  { t: 'erase', label: 'Erase', key: 'E', icon: 'M8 17h9 M3.5 12.5l7-7 5 5-5 5h-3z M7 9l5 5' },
+  { t: 'text', label: 'Text', key: 'T', icon: 'M4 4h12 M10 4v13 M7 17h6' },
 ];
 
 export function Editor({ onBack }: { onBack: () => void }) {

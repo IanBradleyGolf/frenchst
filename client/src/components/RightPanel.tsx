@@ -4,10 +4,11 @@ import { distance, mirrorItems, mirrorRoom, roomAt, polygonArea } from '../geome
 import { byRoom, copiesOf, libraryMap, money, NO_DWELLING, placedItems, totals } from '../schedule';
 import { svgFor } from '../symbols';
 import { api } from '../api';
-import type { Floor, ProjectData, Revision } from '../types';
+import type { Floor, ProjectData, Revision, TextNote } from '../types';
 import { dwellingColor } from './PlanCanvas';
 import { ImportDialog } from './ImportDialog';
 import { linkSelected, unlinkSelected } from '../circuits';
+import { deleteMark, updateText } from '../marks';
 
 export function RightPanel({ showLabels, setShowLabels, showRooms, setShowRooms, showWires, setShowWires }: { showLabels: boolean; setShowLabels: (v: boolean) => void; showRooms: boolean; setShowRooms: (v: boolean) => void; showWires: boolean; setShowWires: (v: boolean) => void }) {
   const tab = useStore((s) => s.rightTab);
@@ -51,6 +52,45 @@ function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms,
       const ids = new Set(items.map((i) => i.id));
       for (const it of d.floors.find((f) => f.id === floor.id)!.items) if (ids.has(it.id)) fn(it);
     }, key);
+
+  if (selection.kind === 'erase' && floor.erase?.some((r) => r.id === selection.id)) {
+    const r = floor.erase.find((x) => x.id === selection.id)!;
+    return (
+      <div className="pad stack">
+        <h4>Erased area</h4>
+        <p className="muted small">A white box over the drawing. Drag it to move; drag its corners or edges to resize. It is also whited out in the PDF export.</p>
+        <p className="muted small">{Math.round(r.w)} × {Math.round(r.h)} pt</p>
+        <div className="row gap wrap">
+          <button className="danger" onClick={() => deleteMark(floor.id, selection)}>Restore (delete box)</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (selection.kind === 'text' && floor.texts?.some((t) => t.id === selection.id)) {
+    const t = floor.texts.find((x) => x.id === selection.id)!;
+    const up = (fn: (x: TextNote) => void, key?: string) => updateText(floor.id, t.id, fn, key);
+    return (
+      <div className="pad stack">
+        <h4>Text</h4>
+        <textarea id="text-edit" autoFocus rows={3} value={t.text} onChange={(e) => up((x) => (x.text = e.target.value), 'text-' + t.id)} />
+        <div className="row gap wrap">
+          <label>Size <input type="number" min={1} step={0.5} value={t.size} onChange={(e) => up((x) => (x.size = Math.max(1, Number(e.target.value) || 1)), 'tsize-' + t.id)} style={{ width: 64 }} /></label>
+          <label>Colour <input type="color" value={t.color} onChange={(e) => up((x) => (x.color = e.target.value), 'tcol-' + t.id)} /></label>
+          <label><input type="checkbox" checked={!!t.bold} onChange={(e) => up((x) => (x.bold = e.target.checked))} /> Bold</label>
+        </div>
+        <div className="row gap wrap">
+          <label>Rotation° <input type="number" step={15} value={t.rot ?? 0} onChange={(e) => up((x) => (x.rot = Number(e.target.value) || 0), 'trot-' + t.id)} style={{ width: 64 }} /></label>
+          <button onClick={() => up((x) => (x.rot = (((x.rot ?? 0) - 90) % 360 + 360) % 360))}>⟲ 90°</button>
+          <button onClick={() => up((x) => (x.rot = ((x.rot ?? 0) + 90) % 360))}>⟳ 90°</button>
+        </div>
+        <p className="muted small">Drag the text to move it; drag a corner to resize or the top handle to rotate.</p>
+        <div className="row gap wrap">
+          <button className="danger" onClick={() => deleteMark(floor.id, selection)}>Delete text</button>
+        </div>
+      </div>
+    );
+  }
 
   if (items.length) {
     const codes = [...new Set(items.map((i) => i.code))];

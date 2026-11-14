@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Floor, Project, ProjectData, Tool } from './types';
 
-export type Selection = { kind: 'items'; ids: string[] } | { kind: 'room'; id: string } | { kind: 'none' };
+export type Selection = { kind: 'items'; ids: string[] } | { kind: 'room'; id: string } | { kind: 'erase'; id: string } | { kind: 'text'; id: string } | { kind: 'none' };
 export type SaveState = 'saved' | 'dirty' | 'saving' | 'error' | 'conflict';
 
 export interface View {
@@ -140,7 +140,7 @@ export const useStore = create<State>((set, get) => ({
   setFloor: (id) => set({ floorId: id, selection: { kind: 'none' }, draft: [] }),
   setTool: (t) => set({ tool: t, draft: [], ...(t !== 'place' ? {} : {}) }),
   setActiveCode: (code) => set({ activeCode: code, tool: code ? 'place' : 'select', draft: [] }),
-  select: (s) => set({ selection: s, rightTab: s.kind === 'room' ? 'rooms' : s.kind === 'items' ? 'properties' : get().rightTab }),
+  select: (s) => set({ selection: s, rightTab: s.kind === 'room' ? 'rooms' : s.kind !== 'none' ? 'properties' : get().rightTab }),
   setDraft: (pts) => set({ draft: pts }),
   setView: (floorId, v) => set({ views: { ...get().views, [floorId]: v } }),
   setClipboard: (c) => set({ clipboard: c }),

@@ -3,6 +3,7 @@ import { isVisible } from './layers';
 import * as XLSX from 'xlsx';
 import { PDFDocument, StandardFonts, rgb, degrees, type PDFPage, type PDFFont } from 'pdf-lib';
 import { planBytes } from './pdf';
+import { pdfSafe } from './marks';
 import { byRoom, copiesOf, libraryMap, placedItems, totals, unknownComponent } from './schedule';
 import { SYMBOLS } from './symbols';
 import type { Component, Floor, Project } from './types';
@@ -154,6 +155,8 @@ export async function exportPdf(project: Project, opts: { labels: boolean; rooms
     const sx = W / floor.width, sy = H / floor.height;
     const s = (Math.abs(sx - 1) < 0.01 && Math.abs(sy - 1) < 0.01) ? 1 : Math.min(sx, sy);
 
+    for (const r of floor.erase ?? []) page.drawRectangle({ x: r.x * s, y: H - (r.y + r.h) * s, width: r.w * s, height: r.h * s, color: rgb(1, 1, 1) });
+
     if (opts.rooms) {
       for (const r of floor.rooms) {
         const d = [];
@@ -182,6 +185,15 @@ export async function exportPdf(project: Project, opts: { labels: boolean; rooms
         const ext = data.symbolSize * s * 1.15;
         page.drawText(it.circuit ? `${it.code}·${it.circuit}`.replace('·', ' ') : it.code, { x: it.x * s + ext, y: H - it.y * s + data.symbolSize * s * 0.2, size: data.symbolSize * s * 0.95, font, color: hex(c.color) });
       }
+    }
+    for (const t of floor.texts ?? []) {
+      const th = ((t.rot ?? 0) * Math.PI) / 180, sin = Math.sin(th), cos = Math.cos(th);
+      const f = t.bold ? bold : font;
+      pdfSafe(t.text).split('\n').forEach((line, i) => {
+        const d = t.size * (0.85 + i * 1.15);
+        const px = t.x - d * sin, py = t.y + d * cos;
+        if (line) page.drawText(line, { x: px * s, y: H - py * s, size: t.size * s, font: f, color: hex(t.color), rotate: degrees(-(t.rot ?? 0)) });
+      });
     }
     // Title block strip
     const ox = floor.crop ? floor.crop.x1 * s : 0, oy = floor.crop ? H - floor.crop.y2 * s : 0;

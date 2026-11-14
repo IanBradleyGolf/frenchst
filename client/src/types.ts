@@ -71,6 +71,25 @@ export interface Axis {
   y2: number;
 }
 
+export interface EraseRect {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface TextNote {
+  id: string;
+  x: number; // top-left, page points
+  y: number;
+  text: string;
+  size: number; // font size, page points
+  color: string;
+  rot?: number;
+  bold?: boolean;
+}
+
 export interface Floor {
   id: string;
   name: string;
@@ -84,6 +103,8 @@ export interface Floor {
   crop?: { x1: number; y1: number; x2: number; y2: number }; // visible part of the sheet
   rooms: Room[];
   items: Item[];
+  erase?: EraseRect[]; // white-outs over the plan drawing
+  texts?: TextNote[];
   bends?: Record<string, number>; // wire arc per linked pair (key from circuits.bendKey)
 }
 
@@ -126,4 +147,4 @@ export interface Revision {
   createdBy: string | null;
 }
 
-export type Tool = 'select' | 'pan' | 'place' | 'room' | 'calibrate' | 'axis' | 'crop' | 'wire';
+export type Tool = 'select' | 'pan' | 'place' | 'room' | 'calibrate' | 'axis' | 'crop' | 'wire' | 'erase' | 'text';

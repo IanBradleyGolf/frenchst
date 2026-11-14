@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Circle, Group, Image as KImage, Layer, Line, Rect, Stage, Text } from 'react-konva';
+import { Circle, Group, Image as KImage, Layer, Line, Rect, Stage, Text, Transformer } from 'react-konva';
 import type Konva from 'konva';
 import { renderPage } from '../pdf';
 import { useStore, type View } from '../store';
@@ -10,6 +10,7 @@ import type { Floor, Item } from '../types';
 import { SymbolShape } from './SymbolShape';
 import { createRoom } from '../rooms';
 import { isVisible } from '../layers';
+import { addText } from '../marks';
 import { bendFor, circuitColor, circuitsOf, spanningLinks, wireGeom, wireTogether } from '../circuits';
 
 const RENDER_SCALE = 3;
@@ -34,6 +35,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
   const [marquee, setMarquee] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const [drag, setDrag] = useState<{ id: string; dx: number; dy: number } | null>(null);
   const [space, setSpace] = useState(false);
+  const trRef = useRef<Konva.Transformer>(null);
 
   const data = useStore((s) => s.project!.data);
   const tool = useStore((s) => s.tool);
@@ -102,6 +104,15 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
   useEffect(() => {
     if (tool !== 'wire') setWireFrom(null);
   }, [tool]);
+
+  const markId = selection.kind === 'erase' || selection.kind === 'text' ? selection.id : null;
+  useEffect(() => {
+    const tr = trRef.current;
+    if (!tr) return;
+    const node = markId && tool === 'select' ? stageRef.current?.findOne('#m-' + markId) : null;
+    tr.nodes(node ? [node] : []);
+    tr.getLayer()?.batchDraw();
+  });
 
   const v: View = view ?? { zoom: 1, x: 0, y: 0 };
 
@@ -195,8 +206,14 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
       }
       return;
     }
-    if (tool === 'crop') {
+    if (tool === 'crop' || tool === 'erase') {
       setMarquee({ x1: p.x, y1: p.y, x2: p.x, y2: p.y });
+      return;
+    }
+    if (tool === 'text') {
+      addText(floor.id, p.x, p.y - sz * 1.25, Math.round(sz * 2.5 * 10) / 10);
+      setTool('select');
+      setTimeout(() => (document.getElementById('text-edit') as HTMLTextAreaElement | null)?.select(), 50);
       return;
     }
     if (tool === 'select' && isBackground) {
@@ -226,6 +243,18 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
         mutate((d) => (d.floors.find((f) => f.id === floor.id)!.crop = c));
         setTool('select');
         setTimeout(() => useStore.getState().requestFit(), 0);
+      }
+      return;
+    }
+    if (marquee && tool === 'erase') {
+      const r = { x: Math.min(marquee.x1, marquee.x2), y: Math.min(marquee.y1, marquee.y2), w: Math.abs(marquee.x2 - marquee.x1), h: Math.abs(marquee.y2 - marquee.y1) };
+      setMarquee(null);
+      if (r.w > 1 / v.zoom && r.h > 1 / v.zoom) {
+        const id = uid();
+        mutate((d) => {
+          const f = d.floors.find((x) => x.id === floor.id)!;
+          f.erase = [...(f.erase ?? []), { id, ...r }];
+        });
       }
       return;
     }
@@ -311,6 +340,46 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                 <Group clipX={c.x1} clipY={c.y1} clipWidth={c.x2 - c.x1} clipHeight={c.y2 - c.y1}>
                   <Rect name="bg" x={c.x1} y={c.y1} width={c.x2 - c.x1} height={c.y2 - c.y1} fill="#fff" shadowColor="#0f172a" shadowBlur={12 / v.zoom} shadowOpacity={0.15} />
                   {bg && <KImage name="bg" image={bg} x={0} y={0} width={floor.width} height={floor.height} />}
+                  {(floor.erase ?? []).map((r) => {
+                    const sel = selection.kind === 'erase' && selection.id === r.id;
+                    return (
+                      <Rect
+                        key={r.id}
+                        id={'m-' + r.id}
+                        x={r.x}
+                        y={r.y}
+                        width={r.w}
+                        height={r.h}
+                        fill="#fff"
+                        stroke={sel || tool === 'erase' ? '#f97316' : undefined}
+                        strokeWidth={0.8 / v.zoom}
+                        dash={[4 / v.zoom, 3 / v.zoom]}
+                        strokeScaleEnabled={false}
+                        listening={tool === 'select'}
+                        draggable={tool === 'select' && sel}
+                        onMouseDown={(e) => {
+                          if (tool !== 'select' || space || e.evt.button !== 0) return;
+                          e.cancelBubble = true;
+                          select({ kind: 'erase', id: r.id });
+                        }}
+                        onDragEnd={(e) => {
+                          const nx = e.target.x(), ny = e.target.y();
+                          mutate((d) => {
+                            const x = d.floors.find((f) => f.id === floor.id)!.erase!.find((q) => q.id === r.id)!;
+                            x.x = nx;
+                            x.y = ny;
+                          });
+                        }}
+                        onTransformEnd={(e) => {
+                          const n = e.target;
+                          const nr = { x: n.x(), y: n.y(), w: Math.abs(n.width() * n.scaleX()), h: Math.abs(n.height() * n.scaleY()) };
+                          n.scaleX(1);
+                          n.scaleY(1);
+                          mutate((d) => Object.assign(d.floors.find((f) => f.id === floor.id)!.erase!.find((q) => q.id === r.id)!, nr));
+                        }}
+                      />
+                    );
+                  })}
                 </Group>
               );
             })()}
@@ -504,6 +573,61 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                 </>
               );
             })()}
+            {(floor.texts ?? []).map((t) => (
+              <Text
+                key={t.id}
+                id={'m-' + t.id}
+                x={t.x}
+                y={t.y}
+                text={t.text || ' '}
+                fontSize={t.size}
+                fontFamily="Helvetica, Arial, sans-serif"
+                fontStyle={t.bold ? 'bold' : 'normal'}
+                fill={t.color}
+                rotation={t.rot ?? 0}
+                lineHeight={1.15}
+                listening={tool === 'select'}
+                draggable={tool === 'select'}
+                onMouseDown={(e) => {
+                  if (tool !== 'select' || space || e.evt.button !== 0) return;
+                  e.cancelBubble = true;
+                  select({ kind: 'text', id: t.id });
+                }}
+                onDblClick={(e) => {
+                  e.cancelBubble = true;
+                  select({ kind: 'text', id: t.id });
+                  setTimeout(() => (document.getElementById('text-edit') as HTMLTextAreaElement | null)?.select(), 30);
+                }}
+                onDragEnd={(e) => {
+                  const nx = e.target.x(), ny = e.target.y();
+                  mutate((d) => {
+                    const x = d.floors.find((f) => f.id === floor.id)!.texts!.find((q) => q.id === t.id)!;
+                    x.x = nx;
+                    x.y = ny;
+                  });
+                }}
+                onTransformEnd={(e) => {
+                  const n = e.target;
+                  const k = Math.max(Math.abs(n.scaleX()), Math.abs(n.scaleY()));
+                  const nt = { x: n.x(), y: n.y(), rot: Math.round(n.rotation() * 10) / 10, size: Math.max(1, Math.round(t.size * k * 10) / 10) };
+                  n.scaleX(1);
+                  n.scaleY(1);
+                  mutate((d) => Object.assign(d.floors.find((f) => f.id === floor.id)!.texts!.find((q) => q.id === t.id)!, nt));
+                }}
+              />
+            ))}
+            <Transformer
+              ref={trRef}
+              rotateEnabled={selection.kind === 'text'}
+              keepRatio={selection.kind === 'text'}
+              enabledAnchors={selection.kind === 'text' ? ['top-left', 'top-right', 'bottom-left', 'bottom-right'] : undefined}
+              rotationSnaps={[0, 45, 90, 135, 180, 225, 270, 315]}
+              anchorSize={7}
+              borderStroke="#f97316"
+              anchorStroke="#f97316"
+              ignoreStroke
+              flipEnabled={false}
+            />
             {ghost && cursor && (
               <Group x={cursor.x} y={cursor.y} opacity={0.55} listening={false}>
                 <SymbolShape kind={ghost.symbol} color={ghost.color} size={sz} />
@@ -552,6 +676,8 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
       {tool === 'axis' && <div className="canvas-tip">Click two points along the party wall. Items are mirrored across this line.</div>}
       {tool === 'wire' && <div className="canvas-tip">{wireFrom ? `Click the next light to wire it to ${wireFrom.code}${wireFrom.circuit ? ' on ' + wireFrom.circuit : ''}. Esc to finish.` : 'Click a light to start a wire, then click the lights to join to it.'}</div>}
       {tool === 'crop' && <div className="canvas-tip">Drag a box around the part of the sheet to keep, e.g. just the dwelling. Esc cancels.</div>}
+      {tool === 'erase' && <div className="canvas-tip">Drag a box over anything on the drawing to white it out. Select it later to move, resize or delete it.</div>}
+      {tool === 'text' && <div className="canvas-tip">Click where the text should go, then type it in the panel on the right.</div>}
       {tool === 'place' && <div className="canvas-tip">Click to place. Esc or V to stop placing.</div>}
     </div>
   );
