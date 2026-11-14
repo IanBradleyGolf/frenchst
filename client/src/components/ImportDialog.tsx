@@ -72,6 +72,7 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
       const code = mapping[k];
       if (!code) continue;
       for (const l of list) {
+        if (src && (l.x < 0 || l.y < 0 || l.x > src.width || l.y > src.height)) continue; // text outside the visible page
         const p = xf.apply(l);
         if (p.x < 0 || p.y < 0 || p.x > floor.width || p.y > floor.height) continue;
         if (area && (p.x < area.x1 || p.x > area.x2 || p.y < area.y1 || p.y > area.y2)) continue;
