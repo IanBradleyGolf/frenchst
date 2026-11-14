@@ -80,6 +80,7 @@ export interface Floor {
   mmPerPt?: number; // set by calibration
   axis?: Axis; // party-wall line for mirror copy
   importArea?: { x1: number; y1: number; x2: number; y2: number }; // the dwelling being modelled
+  crop?: { x1: number; y1: number; x2: number; y2: number }; // visible part of the sheet
   rooms: Room[];
   items: Item[];
 }
@@ -122,4 +123,4 @@ export interface Revision {
   createdBy: string | null;
 }
 
-export type Tool = 'select' | 'pan' | 'place' | 'room' | 'calibrate' | 'axis';
+export type Tool = 'select' | 'pan' | 'place' | 'room' | 'calibrate' | 'axis' | 'crop';

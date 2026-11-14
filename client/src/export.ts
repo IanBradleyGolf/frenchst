@@ -159,6 +159,11 @@ export async function exportPdf(project: Project, opts: { labels: boolean; rooms
         page.drawSvgPath(d.join(' ') + ' Z', { x: 0, y: 0, borderColor: rgb(0.15, 0.39, 0.92), borderWidth: 0.6, borderDashArray: [3, 2] });
       }
     }
+    if (floor.crop) {
+      const c = floor.crop;
+      page.setCropBox(c.x1 * s, H - c.y2 * s, (c.x2 - c.x1) * s, (c.y2 - c.y1) * s);
+      page.setMediaBox(c.x1 * s, H - c.y2 * s, (c.x2 - c.x1) * s, (c.y2 - c.y1) * s);
+    }
     for (const it of floor.items) {
       const c = lib.get(it.code) ?? unknownComponent(it.code);
       drawSymbol(page, bold, c, it.x * s, it.y * s, it.rot, data.symbolSize * s, H);
@@ -168,9 +173,10 @@ export async function exportPdf(project: Project, opts: { labels: boolean; rooms
       }
     }
     // Title block strip
-    page.drawRectangle({ x: 8, y: 8, width: 260, height: 22, color: rgb(1, 1, 1), opacity: 0.9, borderColor: rgb(0.1, 0.1, 0.1), borderWidth: 0.5 });
-    page.drawText(`${project.name} – ${floor.name}`, { x: 14, y: 20, size: 7.5, font: bold });
-    page.drawText(`Component layout · ${stamp()} · ${floor.items.length} items`, { x: 14, y: 12, size: 6, font });
+    const ox = floor.crop ? floor.crop.x1 * s : 0, oy = floor.crop ? H - floor.crop.y2 * s : 0;
+    page.drawRectangle({ x: ox + 8, y: oy + 8, width: 260, height: 22, color: rgb(1, 1, 1), opacity: 0.9, borderColor: rgb(0.1, 0.1, 0.1), borderWidth: 0.5 });
+    page.drawText(`${project.name} – ${floor.name}`, { x: ox + 14, y: oy + 20, size: 7.5, font: bold });
+    page.drawText(`Component layout · ${stamp()} · ${floor.items.length} items`, { x: ox + 14, y: oy + 12, size: 6, font });
   }
 
   // Legend + schedule pages

@@ -97,8 +97,10 @@ export function PlanCanvas({ floor, showLabels, showRooms }: { floor: Floor; sho
 
   function fit() {
     const pad = 24;
-    const zoom = Math.min((size.w - pad * 2) / floor.width, (size.h - pad * 2) / floor.height);
-    setView(floor.id, { zoom, x: (size.w - floor.width * zoom) / 2, y: (size.h - floor.height * zoom) / 2 });
+    const c = floor.crop ?? { x1: 0, y1: 0, x2: floor.width, y2: floor.height };
+    const cw = c.x2 - c.x1, ch = c.y2 - c.y1;
+    const zoom = Math.min((size.w - pad * 2) / cw, (size.h - pad * 2) / ch);
+    setView(floor.id, { zoom, x: (size.w - cw * zoom) / 2 - c.x1 * zoom, y: (size.h - ch * zoom) / 2 - c.y1 * zoom });
   }
 
   const toPage = (sx: number, sy: number) => ({ x: (sx - v.x) / v.zoom, y: (sy - v.y) / v.zoom });
@@ -183,6 +185,10 @@ export function PlanCanvas({ floor, showLabels, showRooms }: { floor: Floor; sho
       }
       return;
     }
+    if (tool === 'crop') {
+      setMarquee({ x1: p.x, y1: p.y, x2: p.x, y2: p.y });
+      return;
+    }
     if (tool === 'select' && isBackground) {
       setMarquee({ x1: p.x, y1: p.y, x2: p.x, y2: p.y });
       if (!e.evt.shiftKey) select({ kind: 'none' });
@@ -203,6 +209,16 @@ export function PlanCanvas({ floor, showLabels, showRooms }: { floor: Floor; sho
 
   function onMouseUp(e: Konva.KonvaEventObject<MouseEvent>) {
     if (pan) setPan(null);
+    if (marquee && tool === 'crop') {
+      const c = { x1: Math.max(0, Math.min(marquee.x1, marquee.x2)), y1: Math.max(0, Math.min(marquee.y1, marquee.y2)), x2: Math.min(floor.width, Math.max(marquee.x1, marquee.x2)), y2: Math.min(floor.height, Math.max(marquee.y1, marquee.y2)) };
+      setMarquee(null);
+      if (c.x2 - c.x1 > 20 && c.y2 - c.y1 > 20) {
+        mutate((d) => (d.floors.find((f) => f.id === floor.id)!.crop = c));
+        setTool('select');
+        setTimeout(() => useStore.getState().requestFit(), 0);
+      }
+      return;
+    }
     if (marquee) {
       const x1 = Math.min(marquee.x1, marquee.x2), x2 = Math.max(marquee.x1, marquee.x2);
       const y1 = Math.min(marquee.y1, marquee.y2), y2 = Math.max(marquee.y1, marquee.y2);
@@ -270,8 +286,16 @@ export function PlanCanvas({ floor, showLabels, showRooms }: { floor: Floor; sho
       >
         <Layer>
           <Group x={v.x} y={v.y} scaleX={v.zoom} scaleY={v.zoom}>
-            <Rect name="bg" x={0} y={0} width={floor.width} height={floor.height} fill="#fff" shadowColor="#0f172a" shadowBlur={12 / v.zoom} shadowOpacity={0.15} />
-            {bg && <KImage name="bg" image={bg} x={0} y={0} width={floor.width} height={floor.height} />}
+            {(() => {
+              const c = tool === 'crop' || !floor.crop ? { x1: 0, y1: 0, x2: floor.width, y2: floor.height } : floor.crop;
+              return (
+                <Group clipX={c.x1} clipY={c.y1} clipWidth={c.x2 - c.x1} clipHeight={c.y2 - c.y1}>
+                  <Rect name="bg" x={c.x1} y={c.y1} width={c.x2 - c.x1} height={c.y2 - c.y1} fill="#fff" shadowColor="#0f172a" shadowBlur={12 / v.zoom} shadowOpacity={0.15} />
+                  {bg && <KImage name="bg" image={bg} x={0} y={0} width={floor.width} height={floor.height} />}
+                </Group>
+              );
+            })()}
+            {tool === 'crop' && floor.crop && <Rect x={floor.crop.x1} y={floor.crop.y1} width={floor.crop.x2 - floor.crop.x1} height={floor.crop.y2 - floor.crop.y1} stroke="#64748b" strokeWidth={1 / v.zoom} dash={[6 / v.zoom, 4 / v.zoom]} listening={false} />}
 
             {showRooms &&
               floor.rooms.map((r) => {
@@ -406,6 +430,7 @@ export function PlanCanvas({ floor, showLabels, showRooms }: { floor: Floor; sho
       {tool === 'room' && <div className="canvas-tip">Click corners. Click the first point, double-click or press Enter to finish. Esc cancels.</div>}
       {tool === 'calibrate' && draft.length < 4 && <div className="canvas-tip">Click two points a known distance apart, e.g. the ends of a dimensioned wall.</div>}
       {tool === 'axis' && <div className="canvas-tip">Click two points along the party wall. Items are mirrored across this line.</div>}
+      {tool === 'crop' && <div className="canvas-tip">Drag a box around the part of the sheet to keep, e.g. just the dwelling. Esc cancels.</div>}
       {tool === 'place' && <div className="canvas-tip">Click to place. Esc or V to stop placing.</div>}
     </div>
   );

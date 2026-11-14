@@ -98,6 +98,14 @@ function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms 
       <label htmlFor="fl-name">Floor name</label>
       <input id="fl-name" value={floor.name} onChange={(e) => mutate((d) => (d.floors.find((f) => f.id === floor.id)!.name = e.target.value), 'floorname')} />
       <div className="kv">
+        <span>Visible area</span>
+        <span>{floor.crop ? 'Cropped' : 'Whole sheet'}</span>
+      </div>
+      <div className="row gap wrap">
+        <button onClick={() => setTool('crop')}>{floor.crop ? 'Re-crop sheet' : 'Crop to dwelling'}</button>
+        {floor.crop && <button onClick={() => { mutate((d) => delete d.floors.find((f) => f.id === floor.id)!.crop); setTimeout(() => useStore.getState().requestFit(), 0); }}>Show whole sheet</button>}
+      </div>
+      <div className="kv">
         <span>Scale</span>
         <span>{calibrated}</span>
       </div>

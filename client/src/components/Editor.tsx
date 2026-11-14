@@ -145,6 +145,7 @@ function useShortcuts() {
       if (k === 'v') return st.setTool('select');
       if (k === 'h') return st.setTool('pan');
       if (k === 'n') return st.setTool('room');
+      if (k === 'c') return st.setTool('crop');
       if (k === 'f') return st.requestFit();
     };
     window.addEventListener('keydown', h);
@@ -156,6 +157,7 @@ const TOOLS: { t: Tool; label: string; key: string; icon: string }[] = [
   { t: 'select', label: 'Select', key: 'V', icon: 'M4 2l12 8-5 1.5L8.5 17z' },
   { t: 'pan', label: 'Pan', key: 'H', icon: 'M10 2v16M2 10h16M10 2l-2.5 2.5M10 2l2.5 2.5M10 18l-2.5-2.5M10 18l2.5-2.5M2 10l2.5-2.5M2 10l2.5 2.5M18 10l-2.5-2.5M18 10l-2.5 2.5' },
   { t: 'room', label: 'Room', key: 'N', icon: 'M3 3h14v14H3z M3 10h6v7' },
+  { t: 'crop', label: 'Crop', key: 'C', icon: 'M5 1v14h14 M1 5h14v14' },
 ];
 
 export function Editor({ onBack }: { onBack: () => void }) {
