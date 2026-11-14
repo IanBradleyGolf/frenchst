@@ -16,6 +16,8 @@ and marked-up drawings from them.
 The component library starts with the LA Lounge fitting types (supply prices from their
 Rev A schedule) plus power, data, AV and control items. Everything in it is editable.
 
+**Live:** https://frenchst.metricus.com (App Service `48frenchst`, database `frenchst` on `metricus.database.windows.net`)
+
 ## Stack
 
 | Part | Choice |
