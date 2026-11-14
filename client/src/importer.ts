@@ -98,25 +98,33 @@ export function snapToWires(labels: Pt[], wires: { a: Pt; b: Pt }[], tol = 26): 
       endCluster.push(ci);
     }
   }
-  const pairs: { d: number; l: number; c: number }[] = [];
-  labels.forEach((l, li) => clusters.forEach((c, ci) => {
-    const d = Math.hypot(c.x - l.x, c.y - l.y);
-    if (d < tol) pairs.push({ d, l: li, c: ci });
-  }));
-  pairs.sort((a, b) => a.d - b.d);
+  // Each wire end belongs to the nearest label within tol. A light with several arcs has several
+  // ends near it (they leave the symbol at different sides), so a label can own many clusters.
   const labelOf = new Map<number, number>();
-  const used = new Set<number>();
-  for (const p of pairs) {
-    if (used.has(p.l) || labelOf.has(p.c)) continue;
-    used.add(p.l);
-    labelOf.set(p.c, p.l);
-  }
+  const owned = labels.map(() => [] as number[]);
+  clusters.forEach((c, ci) => {
+    let best = -1, bd = tol;
+    labels.forEach((l, li) => {
+      const d = Math.hypot(c.x - l.x, c.y - l.y);
+      if (d < bd) { bd = d; best = li; }
+    });
+    if (best >= 0) { labelOf.set(ci, best); owned[best].push(ci); }
+  });
   const pos = labels.map((l) => ({ x: l.x, y: l.y }));
   const snapped = labels.map(() => false);
-  for (const [ci, li] of labelOf) {
-    pos[li] = { x: clusters[ci].x, y: clusters[ci].y };
+  owned.forEach((cs, li) => {
+    if (!cs.length) return;
+    // Ends sit on the symbol's edge: their average approximates the symbol centre when they
+    // surround it; otherwise use the closest end.
+    const avg = { x: cs.reduce((a, ci) => a + clusters[ci].x, 0) / cs.length, y: cs.reduce((a, ci) => a + clusters[ci].y, 0) / cs.length };
+    const spread = Math.max(...cs.map((ci) => Math.hypot(clusters[ci].x - avg.x, clusters[ci].y - avg.y)));
+    if (cs.length > 1 && spread < 10) pos[li] = avg;
+    else {
+      const ci = cs.reduce((b, ci) => (Math.hypot(clusters[ci].x - labels[li].x, clusters[ci].y - labels[li].y) < Math.hypot(clusters[b].x - labels[li].x, clusters[b].y - labels[li].y) ? ci : b), cs[0]);
+      pos[li] = { x: clusters[ci].x, y: clusters[ci].y };
+    }
     snapped[li] = true;
-  }
+  });
   const links: [number, number][] = [];
   for (let i = 0; i < wires.length; i++) {
     const la = labelOf.get(endCluster[i * 2]), lb = labelOf.get(endCluster[i * 2 + 1]);
