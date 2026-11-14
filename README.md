@@ -37,21 +37,23 @@ To use Azure SQL locally, set `SQL_SERVER` / `SQL_DATABASE` (see `.env.example`)
 
 ## Deploy to Azure
 
-1. **Database.** Create a database on `metricus.database.windows.net` (default name `frenchst`,
-   or set `SQL_DATABASE`). Make sure the server has an Entra admin.
-2. **Web App.** Create an App Service: Linux, Node 22 LTS (or 24 LTS). Under *Identity*, turn on the
-   system-assigned managed identity.
-3. **Grant access.** Run `sql/setup.sql` against the database, replacing `<web-app-name>`.
-   Also allow Azure services through the SQL server firewall (or use a private endpoint).
-4. **App settings** (Configuration → Application settings):
+1. **Database.** `frenchst` on `metricus.database.windows.net`.
+2. **Web App.** `48frenchst` — Linux, Node 22 LTS.
+3. **Database user.** Connected to the `frenchst` database (not master), run `sql/setup.sql`
+   with your own password. On the SQL server's *Networking* page, tick
+   *Allow Azure services and resources to access this server*.
+4. **App settings** (Settings → Environment variables):
    - `SQL_SERVER` = `metricus.database.windows.net`
    - `SQL_DATABASE` = `frenchst`
-   - `SQL_AUTH` = `managed-identity`
+   - `SQL_AUTH` = `sql`
+   - `SQL_USER` = `frenchst_app`
+   - `SQL_PASSWORD` = the password from step 3
    - `NODE_ENV` = `production`
-   - Startup command: `npm start`
-5. **Sign-in.** Authentication → Add identity provider → Microsoft. Require authentication.
+   - Startup command (Configuration → General settings): `npm start`
+5. **Sign-in (optional).** The site is open to anyone with the URL. To restrict it:
+   Authentication → Add identity provider → Microsoft, require authentication.
 6. **GitHub.** In the repo settings add:
-   - Variable `AZURE_WEBAPP_NAME` = your App Service name
+   - Variable `AZURE_WEBAPP_NAME` = `48frenchst`
    - Secret `AZURE_WEBAPP_PUBLISH_PROFILE` = the publish profile downloaded from the Web App
      (enable *SCM Basic Auth Publishing Credentials* in the Web App's configuration first)
 7. Push to `main`. The workflow typechecks, builds and deploys. `GET /api/health` reports the storage in use.
