@@ -4,6 +4,7 @@ import { svgFor } from '../symbols';
 import { FloorDialog } from './FloorDialog';
 import { ComponentDialog } from './ComponentDialog';
 import { layerCounts, layerOf } from '../layers';
+import { duplicateFloor } from '../floors';
 
 export function LeftPanel() {
   const data = useStore((s) => s.project!.data);
@@ -68,6 +69,7 @@ export function LeftPanel() {
                 </button>
               )}
               <span className="floor-actions">
+                <button className="icon" title="Copy this floor (items, wiring, rooms, erasures and text)" onClick={() => duplicateFloor(f.id)}>⧉</button>
                 <button className="icon" title="Move up" disabled={i === 0} onClick={() => mutate((d) => d.floors.splice(i - 1, 0, d.floors.splice(i, 1)[0]))}>↑</button>
                 <button
                   className="icon"
