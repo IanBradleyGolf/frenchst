@@ -4,6 +4,7 @@ import { useFloor, useStore } from '../store';
 import { exportExcel, exportPdf } from '../export';
 import { uid } from '../geometry';
 import { LeftPanel } from './LeftPanel';
+import { Splitter, usePanelWidth } from './Splitter';
 import { createRoom } from '../rooms';
 import { RightPanel, mirrorCopy } from './RightPanel';
 import { PlanCanvas, isTyping } from './PlanCanvas';
@@ -171,6 +172,8 @@ export function Editor({ onBack }: { onBack: () => void }) {
   const [showLabels, setShowLabels] = useState(true);
   const [showRooms, setShowRooms] = useState(true);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [leftW, setLeftW, leftDef] = usePanelWidth('fs.leftWidth', 270, 180, 560);
+  const [rightW, setRightW, rightDef] = usePanelWidth('fs.rightWidth', 330, 240, 720);
 
   async function doPdf() {
     setExporting('Building PDF…');
@@ -222,8 +225,9 @@ export function Editor({ onBack }: { onBack: () => void }) {
         </div>
       )}
       {saveState === 'error' && <div className="banner warn">Could not save: {saveError}. Retrying on your next change.</div>}
-      <div className="workspace">
+      <div className="workspace" style={{ gridTemplateColumns: `${leftW}px 6px minmax(0, 1fr) 6px ${rightW}px` }}>
         <LeftPanel />
+        <Splitter side="left" width={leftW} setWidth={setLeftW} def={leftDef} />
         <main className="center">
           {floor ? (
             <PlanCanvas key={floor.id} floor={floor} showLabels={showLabels} showRooms={showRooms} />
@@ -234,6 +238,7 @@ export function Editor({ onBack }: { onBack: () => void }) {
             </div>
           )}
         </main>
+        <Splitter side="right" width={rightW} setWidth={setRightW} def={rightDef} />
         <RightPanel showLabels={showLabels} setShowLabels={setShowLabels} showRooms={showRooms} setShowRooms={setShowRooms} />
       </div>
     </div>

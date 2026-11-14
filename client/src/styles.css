@@ -93,7 +93,12 @@ ul.plain { margin: 6px 0; padding-left: 18px; }
 .tools .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
 .banner { background: #fef2f2; color: var(--bad); padding: 8px 14px; border-bottom: 1px solid #fecaca; display: flex; gap: 10px; align-items: center; }
 .banner.warn { background: #fffbeb; color: var(--warn); border-color: #fde68a; }
-.workspace { flex: 1; display: grid; grid-template-columns: 270px 1fr 330px; min-height: 0; }
+.workspace { flex: 1; display: grid; grid-template-columns: 270px 6px minmax(0, 1fr) 6px 330px; min-height: 0; }
+.splitter { cursor: col-resize; background: var(--line); position: relative; z-index: 5; touch-action: none; }
+.splitter::after { content: ''; position: absolute; inset: 0 -4px; }
+.splitter:hover, .splitter.active, .splitter:focus-visible { background: var(--accent); outline: none; }
+.left { border-right: none !important; }
+.right { border-left: none !important; }
 .left, .right { background: var(--panel); min-height: 0; display: flex; flex-direction: column; }
 .left { border-right: 1px solid var(--line); }
 .right { border-left: 1px solid var(--line); }
