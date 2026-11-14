@@ -86,3 +86,29 @@ export function wireTogether(floor: Floor, a: Item, b: Item) {
     }
   });
 }
+
+export const DEFAULT_BEND = 0.18;
+
+/** Stable key and orientation for the wire between two items. */
+export function bendKey(a: Item, b: Item): { key: string; a: Item; b: Item } {
+  return a.id < b.id ? { key: `${a.id}|${b.id}`, a, b } : { key: `${b.id}|${a.id}`, a: b, b: a };
+}
+
+/**
+ * Geometry of one wire: it passes through `apex`, offset from the midpoint by bend × length,
+ * perpendicular to the chord. `ctrl` is the matching quadratic Bézier control point.
+ */
+export function wireGeom(floor: Floor, p: Item, q: Item, override?: { key: string; bend: number } | null) {
+  const { key, a, b } = bendKey(p, q);
+  const bend = override && override.key === key ? override.bend : floor.bends?.[key] ?? DEFAULT_BEND;
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, dx = b.x - a.x, dy = b.y - a.y;
+  const apex = { x: mx - dy * bend, y: my + dx * bend };
+  return { key, a, b, bend, mid: { x: mx, y: my }, apex, ctrl: { x: 2 * apex.x - mx, y: 2 * apex.y - my } };
+}
+
+/** Bend that puts the wire's apex nearest to point p. */
+export function bendFor(a: Item, b: Item, p: { x: number; y: number }): number {
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, dx = b.x - a.x, dy = b.y - a.y;
+  const L2 = dx * dx + dy * dy || 1;
+  return ((p.x - mx) * -dy + (p.y - my) * dx) / L2;
+}

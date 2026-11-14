@@ -84,6 +84,7 @@ export interface Floor {
   crop?: { x1: number; y1: number; x2: number; y2: number }; // visible part of the sheet
   rooms: Room[];
   items: Item[];
+  bends?: Record<string, number>; // wire arc per linked pair (key from circuits.bendKey)
 }
 
 export interface ProjectData {

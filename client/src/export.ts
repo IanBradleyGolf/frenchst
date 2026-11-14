@@ -1,4 +1,4 @@
-import { circuitColor, circuitsOf, spanningLinks } from './circuits';
+import { circuitColor, circuitsOf, spanningLinks, wireGeom } from './circuits';
 import { isVisible } from './layers';
 import * as XLSX from 'xlsx';
 import { PDFDocument, StandardFonts, rgb, degrees, type PDFPage, type PDFFont } from 'pdf-lib';
@@ -169,9 +169,9 @@ export async function exportPdf(project: Project, opts: { labels: boolean; rooms
     const visible = floor.items.filter((x) => isVisible(data, x));
     for (const [name, list] of circuitsOf({ ...floor, items: visible })) {
       const col = hex(circuitColor(name));
-      for (const [a, b] of spanningLinks(list)) {
-        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, dx = b.x - a.x, dy = b.y - a.y;
-        const cx = mx - dy * 0.18, cy = my + dx * 0.18;
+      for (const [p, q] of spanningLinks(list)) {
+        const { a, b, ctrl } = wireGeom(floor, p, q);
+        const cx = ctrl.x, cy = ctrl.y;
         page.drawSvgPath(`M${(a.x * s).toFixed(2)} ${(a.y * s - H).toFixed(2)} Q${(cx * s).toFixed(2)} ${(cy * s - H).toFixed(2)} ${(b.x * s).toFixed(2)} ${(b.y * s - H).toFixed(2)}`, { x: 0, y: 0, borderColor: col, borderWidth: 0.6, borderDashArray: [3, 2] });
       }
     }

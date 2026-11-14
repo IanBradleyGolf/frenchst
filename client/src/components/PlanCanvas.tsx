@@ -10,7 +10,7 @@ import type { Floor, Item } from '../types';
 import { SymbolShape } from './SymbolShape';
 import { createRoom } from '../rooms';
 import { isVisible } from '../layers';
-import { circuitColor, circuitsOf, spanningLinks, wireTogether } from '../circuits';
+import { bendFor, circuitColor, circuitsOf, spanningLinks, wireGeom, wireTogether } from '../circuits';
 
 const RENDER_SCALE = 3;
 const DWELLING_COLORS = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed'];
@@ -23,6 +23,7 @@ export function dwellingColor(dwellings: string[], d: string) {
 export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: { floor: Floor; showLabels: boolean; showRooms: boolean; showWires?: boolean }) {
   const [wireFrom, setWireFrom] = useState<Item | null>(null);
   const [rotPrev, setRotPrev] = useState<{ delta: number } | null>(null);
+  const [bendPrev, setBendPrev] = useState<{ key: string; bend: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -379,25 +380,57 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                 const col = circuitColor(name);
                 const live = list.map((it) => (drag && selectedIds.has(it.id) ? { ...it, x: it.x + drag.dx, y: it.y + drag.dy } : it));
                 const allSel = list.every((it) => selectedIds.has(it.id));
-                return spanningLinks(live).map(([a, b], k) => {
-                  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-                  const dx = b.x - a.x, dy = b.y - a.y;
-                  const bend = 0.18;
+                return spanningLinks(live).map(([p, q], k) => {
+                  const g = wireGeom(floor, p, q, bendPrev);
+                  const { a, b } = g;
+                  const setBend = (bend: number | null) =>
+                    mutate((d) => {
+                      const f = d.floors.find((x) => x.id === floor.id)!;
+                      f.bends = { ...(f.bends ?? {}) };
+                      if (bend === null) delete f.bends[g.key];
+                      else f.bends[g.key] = Math.round(bend * 1000) / 1000;
+                    });
                   return (
-                    <Line
-                      key={`${name}-${k}`}
-                      points={[a.x, a.y, mx - dy * bend, my + dx * bend, b.x, b.y]}
-                      tension={0.5}
-                      stroke={col}
-                      strokeWidth={(allSel ? 2.2 : 1.3) / v.zoom}
-                      dash={[6 / v.zoom, 4 / v.zoom]}
-                      hitStrokeWidth={8 / v.zoom}
-                      onMouseDown={(e) => {
-                        if (tool !== 'select') return;
-                        e.cancelBubble = true;
-                        select({ kind: 'items', ids: list.map((i) => i.id) });
-                      }}
-                    />
+                    <Group key={`${name}-${k}`}>
+                      <Line
+                        points={[a.x, a.y, g.apex.x, g.apex.y, b.x, b.y]}
+                        tension={0.5}
+                        stroke={col}
+                        strokeWidth={(allSel ? 2.2 : 1.3) / v.zoom}
+                        dash={[6 / v.zoom, 4 / v.zoom]}
+                        hitStrokeWidth={8 / v.zoom}
+                        onMouseDown={(e) => {
+                          if (tool !== 'select') return;
+                          e.cancelBubble = true;
+                          select({ kind: 'items', ids: list.map((i) => i.id) });
+                        }}
+                      />
+                      {allSel && tool === 'select' && !drag && (
+                        <Circle
+                          x={g.apex.x}
+                          y={g.apex.y}
+                          radius={4.5 / v.zoom}
+                          fill="#fff"
+                          stroke={col}
+                          strokeWidth={1.5 / v.zoom}
+                          hitStrokeWidth={6 / v.zoom}
+                          draggable
+                          onMouseDown={(e) => (e.cancelBubble = true)}
+                          onMouseEnter={(e) => (e.target.getStage()!.container().style.cursor = 'grab')}
+                          onMouseLeave={(e) => (e.target.getStage()!.container().style.cursor = '')}
+                          onDragMove={(e) => setBendPrev({ key: g.key, bend: bendFor(a, b, { x: e.target.x(), y: e.target.y() }) })}
+                          onDragEnd={(e) => {
+                            const bend = bendFor(a, b, { x: e.target.x(), y: e.target.y() });
+                            setBendPrev(null);
+                            setBend(Math.abs(bend) < 0.015 ? 0 : bend);
+                          }}
+                          onDblClick={(e) => {
+                            e.cancelBubble = true;
+                            setBend(g.bend === 0 ? null : 0);
+                          }}
+                        />
+                      )}
+                    </Group>
                   );
                 });
               })}
