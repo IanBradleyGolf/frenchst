@@ -6,7 +6,40 @@ import { ComponentDialog } from './ComponentDialog';
 import { layerCounts, layerOf } from '../layers';
 import { duplicateFloor } from '../floors';
 
+function useCollapsed() {
+  const [set, setSet] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem('fs.collapsed') ?? '[]'));
+    } catch {
+      return new Set();
+    }
+  });
+  const toggle = (k: string) =>
+    setSet((cur) => {
+      const n = new Set(cur);
+      n.has(k) ? n.delete(k) : n.add(k);
+      try {
+        localStorage.setItem('fs.collapsed', JSON.stringify([...n]));
+      } catch {
+        /* storage unavailable */
+      }
+      return n;
+    });
+  return { is: (k: string) => set.has(k), toggle };
+}
+
+function SecTitle({ title, open, onToggle, extra }: { title: string; open: boolean; onToggle: () => void; extra?: string }) {
+  return (
+    <button className="sec-toggle" onClick={onToggle} aria-expanded={open} title={open ? 'Collapse' : 'Expand'}>
+      <span className={`chev ${open ? 'open' : ''}`}>▸</span>
+      <h3>{title}</h3>
+      {!open && extra && <span className="sec-extra">{extra}</span>}
+    </button>
+  );
+}
+
 export function LeftPanel() {
+  const col = useCollapsed();
   const data = useStore((s) => s.project!.data);
   const floorId = useStore((s) => s.floorId);
   const activeCode = useStore((s) => s.activeCode);
@@ -40,11 +73,11 @@ export function LeftPanel() {
     <aside className="left">
       <section className="panel-sec">
         <div className="sec-head">
-          <h3>Floors</h3>
+          <SecTitle title="Floors" open={!col.is('floors')} onToggle={() => col.toggle('floors')} extra={data.floors.find((f) => f.id === floorId)?.name} />
           <button className="mini" onClick={() => setAddFloor(true)}>+ Add</button>
         </div>
-        {data.floors.length === 0 && <p className="muted small">Add a floor from your architectural PDF to begin.</p>}
-        <ul className="floor-list">
+        {!col.is('floors') && data.floors.length === 0 && <p className="muted small">Add a floor from your architectural PDF to begin.</p>}
+        {!col.is('floors') && <ul className="floor-list">
           {data.floors.map((f, i) => (
             <li key={f.id} className={f.id === floorId ? 'sel' : ''}>
               {renaming === f.id ? (
@@ -87,14 +120,15 @@ export function LeftPanel() {
               </span>
             </li>
           ))}
-        </ul>
+        </ul>}
       </section>
 
       {layers.length > 0 && (
         <section className="panel-sec">
           <div className="sec-head">
-            <h3>Layers</h3>
+            <SecTitle title="Layers" open={!col.is('layers')} onToggle={() => col.toggle('layers')} extra={`${layers.length}`} />
           </div>
+          {!col.is('layers') && <>
           <ul className="layer-list">
             {layers.map((l) => (
               <li key={l.name} className={l.hidden ? 'off' : ''}>
@@ -108,20 +142,35 @@ export function LeftPanel() {
             ))}
           </ul>
           <p className="muted small">Hidden layers are left out of the plan, schedule and exports.</p>
+          </>}
         </section>
       )}
 
       <section className="panel-sec grow">
         <div className="sec-head">
-          <h3>Components</h3>
-          <button className="mini" onClick={() => setEditCode(null)}>+ New</button>
+          <SecTitle title="Components" open={!col.is('components')} onToggle={() => col.toggle('components')} />
+          <span className="row gap">
+            {!col.is('components') && (
+              <button className="mini" title="Collapse or expand every category" onClick={() => {
+                const cats = groups.map(([c]) => 'cat:' + c);
+                const allClosed = cats.every((c) => col.is(c));
+                for (const c of cats) if (col.is(c) === allClosed) col.toggle(c);
+              }}>{groups.every(([c]) => col.is('cat:' + c)) ? 'Expand all' : 'Collapse all'}</button>
+            )}
+            <button className="mini" onClick={() => setEditCode(null)}>+ New</button>
+          </span>
         </div>
+        {!col.is('components') && <>
         <input className="search" placeholder="Search code or name" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search components" />
         <div className="lib">
           {groups.map(([cat, list]) => (
             <div key={cat} className="lib-group">
-              <div className="lib-cat">{cat}</div>
-              {list.map((c) => (
+              <button className="lib-cat" onClick={() => col.toggle('cat:' + cat)} aria-expanded={q !== '' || !col.is('cat:' + cat)}>
+                <span className={`chev ${q !== '' || !col.is('cat:' + cat) ? 'open' : ''}`}>▸</span>
+                {cat}
+                <span className="lib-cat-n">{list.length}</span>
+              </button>
+              {(q !== '' || !col.is('cat:' + cat)) && list.map((c) => (
                 <div key={c.code} className={`lib-item ${tool === 'place' && activeCode === c.code ? 'active' : ''}`}>
                   <button className="lib-pick" onClick={() => setActiveCode(tool === 'place' && activeCode === c.code ? null : c.code)} title={`Place ${c.code}`}>
                     <span className="lib-sym" dangerouslySetInnerHTML={{ __html: svgFor(c.symbol, c.color, 22) }} />
@@ -135,6 +184,7 @@ export function LeftPanel() {
             </div>
           ))}
         </div>
+        </>}
       </section>
       {addFloor && <FloorDialog onClose={() => setAddFloor(false)} />}
       {editCode !== undefined && <ComponentDialog code={editCode} onClose={() => setEditCode(undefined)} />}
