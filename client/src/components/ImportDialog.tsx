@@ -64,12 +64,12 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
   const groups = useMemo(() => (labels ? classify(labels) : new Map<string, Label[]>()), [labels]);
   useEffect(() => {
     const m: Record<string, string> = {};
-    for (const k of groups.keys()) m[k] = defaultMapping(k, library);
+    for (const k of groups.keys()) m[k] = defaultMapping(k, library, DEFAULT_LIBRARY);
     setMapping(m);
   }, [groups, library]);
 
   const xf = srcPts.length === 2 && dstPts.length === 2 ? similarity(srcPts[0], srcPts[1], dstPts[0], dstPts[1]) : null;
-  const lib = new Map(library.map((c) => [c.code, c]));
+  const lib = new Map([...DEFAULT_LIBRARY, ...library].map((c) => [c.code, c]));
 
   // Labels to import, in source coordinates, before alignment.
   const chosen = useMemo(() => {
@@ -77,7 +77,7 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
     for (const [k, list] of groups) {
       const code = mapping[k];
       if (!code) continue;
-      const light = /^(DL|WL|P|LED|LL|UP|GS|SP|LP)/.test(k);
+      const light = /^(DL\d|WL\d|P\d|LED\d|LL\d|UP\d|GS\d|SP\d|LP$)/.test(k);
       for (const l of list) {
         if (src && (l.x < 0 || l.y < 0 || l.x > src.width || l.y > src.height)) continue; // text outside the visible page
         out.push({ code, x: l.x, y: l.y, light });
@@ -125,7 +125,7 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
     }
   }
 
-  const missingStd = DEFAULT_LIBRARY.filter((c) => !lib.has(c.code));
+  const missingStd = DEFAULT_LIBRARY.filter((c) => !library.some((x) => x.code === c.code));
 
   function doImport() {
     const layerName = layer.trim() || defaultLayer;
@@ -152,7 +152,10 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
         if (i !== undefined && j !== undefined && i !== j) newLinks.push([items[i].id, items[j].id]);
       }
     }
+    const used = new Set(items.map((i) => i.code));
     mutate((d) => {
+      const have = new Set(d.library.map((c) => c.code));
+      d.library.push(...structuredClone(DEFAULT_LIBRARY.filter((c) => used.has(c.code) && !have.has(c.code))));
       const f = d.floors.find((x) => x.id === floor.id)!;
       if (area) f.importArea = area;
       if (replace) {
@@ -257,6 +260,13 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
                             {library.map((c) => (
                               <option key={c.code} value={c.code}>{c.code} – {c.name}</option>
                             ))}
+                            {missingStd.length > 0 && (
+                              <optgroup label="Standard (added to your library on import)">
+                                {missingStd.map((c) => (
+                                  <option key={c.code} value={c.code}>{c.code} – {c.name}</option>
+                                ))}
+                              </optgroup>
+                            )}
                           </select>
                         </td>
                       </tr>

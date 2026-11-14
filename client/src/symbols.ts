@@ -45,11 +45,17 @@ export const SYMBOLS: Record<SymbolKind, Prim[]> = {
   towel: [{ t: 'rect', x: -1, y: -0.7, w: 2, h: 1.4, sw: 0.18 }, label('HT', 0.7)],
   smoke: [ring(), label('S', 1)],
   circuit: [{ t: 'poly', pts: [0, -1, 1, 0, 0, 1, -1, 0], closed: true, w: 0.18 }, label('C', 0.8)],
+  alarm: [{ t: 'rect', x: -1, y: -1, w: 2, h: 2, sw: 0.18 }, label('AK', 0.75)],
+  access: [{ t: 'rect', x: -1, y: -1, w: 2, h: 2, sw: 0.18 }, label('AC', 0.75)],
+  strike: [{ t: 'rect', x: -1, y: -1, w: 2, h: 2, sw: 0.18 }, label('ES', 0.75)],
+  doorctl: [{ t: 'rect', x: -1, y: -1, w: 2, h: 2, sw: 0.18 }, label('DC', 0.75)],
+  soundbar: [{ t: 'rect', x: -1.4, y: -0.6, w: 2.8, h: 1.2, sw: 0.18 }, label('SB', 0.7)],
+  sub: [{ t: 'rect', x: -1, y: -1, w: 2, h: 2, sw: 0.18 }, label('SW', 0.75)],
   generic: [{ t: 'poly', pts: [0, -1, 1, 0, 0, 1, -1, 0], closed: true, fill: true }],
 };
 
 /** Approximate half-extent of a symbol in unit coordinates, for hit areas and labels. */
-export const EXTENT: Partial<Record<SymbolKind, number>> = { linear: 1.6, strip: 1.8, spot: 1.4, adjustable: 1.2, camera: 1.2, touchscreen: 1.1, tv: 1.1 };
+export const EXTENT: Partial<Record<SymbolKind, number>> = { linear: 1.6, strip: 1.8, spot: 1.4, adjustable: 1.2, camera: 1.2, touchscreen: 1.1, tv: 1.1, soundbar: 1.4 };
 
 export function svgFor(kind: SymbolKind, color: string, size = 22): string {
   const s = size / 2 / 1.9;

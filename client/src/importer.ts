@@ -58,13 +58,12 @@ const ALIASES: Record<string, string> = {
   TS: 'TS',
   CAM: 'CAM',
   CS: 'CAM',
-  AK: 'INT',
-  ACK: 'INT',
+  DS: 'INT', // door station (Akuvox video intercom)
 };
 
 /** Default library code for an import key, or '' to skip. */
-export function defaultMapping(key: string, library: Component[]): string {
-  const codes = new Set(library.map((c) => c.code));
+export function defaultMapping(key: string, library: Component[], standard: Component[] = []): string {
+  const codes = new Set([...library, ...standard].map((c) => c.code));
   if (codes.has(key)) return key;
   const a = ALIASES[key];
   return a && codes.has(a) ? a : '';

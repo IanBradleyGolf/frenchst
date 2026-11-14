@@ -1,5 +1,11 @@
 export type SymbolKind =
   | 'downlight'
+  | 'alarm'
+  | 'access'
+  | 'strike'
+  | 'doorctl'
+  | 'soundbar'
+  | 'sub'
   | 'pinlight'
   | 'adjustable'
   | 'wall'
