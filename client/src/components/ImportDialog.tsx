@@ -205,13 +205,13 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
         {page && planId && src && (
           <div className="import-grid">
             <div className="import-panes">
-              <AlignPane planId={planId} page={page} width={src.width} height={src.height} points={srcPts} onPick={(p) => setSrcPts((x) => (x.length >= 2 ? [p] : [...x, p]))} title={`Source · page ${page}`} />
-              <AlignPane planId={floor.planId} page={floor.page} width={floor.width} height={floor.height} points={dstPts} onPick={(p) => setDstPts((x) => (x.length >= 2 ? [p] : [...x, p]))} preview={planned} title={`Your plan · ${floor.name}`} areaMode={areaMode} area={area} onArea={(a) => { setArea(a); setAreaMode(false); }} />
+              <AlignPane planId={planId} page={page} width={src.width} height={src.height} points={srcPts} onPick={(p) => setSrcPts((x) => (x.length >= 2 ? [p] : [...x, p]))} onMove={(i, p) => setSrcPts((x) => x.map((q, k) => (k === i ? p : q)))} onUndo={() => setSrcPts((x) => x.slice(0, -1))} onClear={() => setSrcPts([])} title={`Source · page ${page}`} />
+              <AlignPane planId={floor.planId} page={floor.page} width={floor.width} height={floor.height} points={dstPts} onPick={(p) => setDstPts((x) => (x.length >= 2 ? [p] : [...x, p]))} onMove={(i, p) => setDstPts((x) => x.map((q, k) => (k === i ? p : q)))} onUndo={() => setDstPts((x) => x.slice(0, -1))} onClear={() => setDstPts([])} preview={planned} title={`Your plan · ${floor.name}`} areaMode={areaMode} area={area} onArea={(a) => { setArea(a); setAreaMode(false); }} />
             </div>
             <div className="import-side stack">
               <p className="small">
                 Click the <b style={{ color: '#dc2626' }}>same corner</b> (A) on both plans, then a <b style={{ color: '#2563eb' }}>second corner</b> (B) far from it — e.g. opposite ends of the building.
-                Scroll to zoom, drag to pan. Coloured dots on your plan preview where items will land.
+                Scroll to zoom, drag to pan, drag a marker to move it, or use Undo point. Coloured dots on your plan preview where items will land.
               </p>
               <div className="row gap">
                 <button onClick={() => { setSrcPts([]); setDstPts([]); }}>Reset points</button>

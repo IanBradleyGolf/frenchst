@@ -81,6 +81,10 @@ function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms,
         <label htmlFor="pp-note">Note</label>
         <textarea id="pp-note" rows={2} placeholder={notes.length > 1 ? '(mixed)' : ''} value={notes.length === 1 ? notes[0] : ''} onChange={(e) => updateSel((it) => (it.note = e.target.value || undefined), 'note')} />
         <div className="row gap wrap">
+          <label htmlFor="pp-rot" className="small" style={{ margin: 0 }}>Rotation°</label>
+          <input id="pp-rot" type="number" step={15} style={{ width: 70 }} value={new Set(items.map((i) => Math.round(i.rot))).size === 1 ? Math.round(items[0].rot) : ''} placeholder="mixed" onChange={(e) => { const v = Number(e.target.value); if (!Number.isNaN(v)) updateSel((it) => (it.rot = ((v % 360) + 360) % 360), 'rot'); }} />
+          <button onClick={() => updateSel((it) => (it.rot = (it.rot + 270) % 360))} title="Rotate 90° left">⟲ 90°</button>
+          <button onClick={() => updateSel((it) => (it.rot = (it.rot + 90) % 360))} title="Rotate 90° right">⟳ 90°</button>
           <button onClick={() => updateSel((it) => (it.rot = (it.rot + 315) % 360))} title="Rotate left (Shift+R)">⟲ 45°</button>
           <button onClick={() => updateSel((it) => (it.rot = (it.rot + 45) % 360))} title="Rotate right (R)">⟳ 45°</button>
           <button onClick={() => updateSel((it) => (it.rot = 0))}>Reset</button>
@@ -137,7 +141,7 @@ function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms,
       <label className="check"><input type="checkbox" checked={showRooms} onChange={(e) => setShowRooms(e.target.checked)} /> Show rooms</label>
       <hr />
       <p className="muted small">
-        <b>Shortcuts</b><br />V select · H pan (or hold Space) · W wire · L wire selected together · U remove wiring · C crop · N new room · R rotate · Del delete · Ctrl+C / Ctrl+V copy and paste · Ctrl+D duplicate · M mirror copy · arrows nudge · Ctrl+Z / Ctrl+Y undo and redo · F fit
+        <b>Shortcuts</b><br />V select · H pan (or hold Space) · W wire · L wire selected together · U remove wiring · C crop · N new room · R rotate 45° (or drag the orange handle) · Del delete · Ctrl+C / Ctrl+V copy and paste · Ctrl+D duplicate · M mirror copy · arrows nudge · Ctrl+Z / Ctrl+Y undo and redo · F fit
       </p>
     </div>
   );

@@ -22,6 +22,7 @@ export function dwellingColor(dwellings: string[], d: string) {
 
 export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: { floor: Floor; showLabels: boolean; showRooms: boolean; showWires?: boolean }) {
   const [wireFrom, setWireFrom] = useState<Item | null>(null);
+  const [rotPrev, setRotPrev] = useState<{ delta: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -419,7 +420,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                   onDragMove={(e) => setDrag({ id: it.id, dx: e.target.x() - it.x, dy: e.target.y() - it.y })}
                   onDragEnd={(e) => dragEnd(it, e.target)}
                 >
-                  <Group rotation={it.rot}>
+                  <Group rotation={sel && rotPrev ? it.rot + rotPrev.delta : it.rot}>
                     <Rect x={-ext - 1} y={-sz - 1} width={(ext + 1) * 2} height={(sz + 1) * 2} fill="transparent" />
                     {sel && <Rect x={-ext - 1.5} y={-sz - 1.5} width={(ext + 1.5) * 2} height={(sz + 1.5) * 2} stroke="#f97316" strokeWidth={1.2 / v.zoom} dash={[3 / v.zoom, 2 / v.zoom]} />}
                     <SymbolShape kind={c.symbol} color={c.color} size={sz} />
@@ -431,6 +432,45 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
               );
             })}
 
+            {tool === 'select' && selection.kind === 'items' && (() => {
+              const anchor = shown.find((i) => i.id === selection.ids[selection.ids.length - 1]);
+              if (!anchor) return null;
+              const c = lib.get(anchor.code) ?? unknownComponent(anchor.code);
+              const r = Math.max((EXTENT[c.symbol] ?? 1) * sz, sz) + 14 / v.zoom;
+              const ang = ((anchor.rot + (rotPrev?.delta ?? 0) - 90) * Math.PI) / 180;
+              const hx = anchor.x + Math.cos(ang) * r, hy = anchor.y + Math.sin(ang) * r;
+              return (
+                <>
+                  <Line points={[anchor.x, anchor.y, hx, hy]} stroke="#f97316" strokeWidth={1 / v.zoom} listening={false} />
+                  <Circle
+                    x={hx}
+                    y={hy}
+                    radius={5 / v.zoom}
+                    fill="#fff"
+                    stroke="#f97316"
+                    strokeWidth={2 / v.zoom}
+                    draggable
+                    onMouseDown={(e) => (e.cancelBubble = true)}
+                    onMouseEnter={(e) => (e.target.getStage()!.container().style.cursor = 'grab')}
+                    onMouseLeave={(e) => (e.target.getStage()!.container().style.cursor = '')}
+                    onDragMove={(e) => {
+                      const raw = (Math.atan2(e.target.y() - anchor.y, e.target.x() - anchor.x) * 180) / Math.PI + 90;
+                      const target = e.evt.shiftKey ? raw : Math.round(raw / 15) * 15;
+                      setRotPrev({ delta: target - anchor.rot });
+                    }}
+                    onDragEnd={(e) => {
+                      e.target.position({ x: hx, y: hy });
+                      const delta = rotPrev?.delta ?? 0;
+                      setRotPrev(null);
+                      if (!delta) return;
+                      mutate((d) => {
+                        for (const x of d.floors.find((f) => f.id === floor.id)!.items) if (selectedIds.has(x.id)) x.rot = (((x.rot + delta) % 360) + 360) % 360;
+                      });
+                    }}
+                  />
+                </>
+              );
+            })()}
             {ghost && cursor && (
               <Group x={cursor.x} y={cursor.y} opacity={0.55} listening={false}>
                 <SymbolShape kind={ghost.symbol} color={ghost.color} size={sz} />

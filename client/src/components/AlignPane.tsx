@@ -11,6 +11,9 @@ interface Props {
   height: number;
   points: Pt[]; // up to 2: A, B
   onPick: (p: Pt) => void;
+  onMove?: (i: number, p: Pt) => void; // drag a marker to adjust it
+  onUndo?: () => void; // remove the last point
+  onClear?: () => void;
   preview?: { x: number; y: number; color: string }[];
   title: string;
   areaMode?: boolean; // drag draws a rectangle instead of panning
@@ -20,7 +23,7 @@ interface Props {
 
 const MARK = ['#dc2626', '#2563eb'];
 
-export function AlignPane({ planId, page, width, height, points, onPick, preview, title, areaMode, area, onArea }: Props) {
+export function AlignPane({ planId, page, width, height, points, onPick, onMove, onUndo, onClear, preview, title, areaMode, area, onArea }: Props) {
   const [rect, setRect] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const stage = useRef<Konva.Stage>(null);
@@ -56,7 +59,14 @@ export function AlignPane({ planId, page, width, height, points, onPick, preview
 
   return (
     <div className="align-pane">
-      <div className="align-title">{title}</div>
+      <div className="align-title">
+        <span>{title}</span>
+        <span className="align-pts">
+          <span className="muted">{points.length === 0 ? 'Click point A' : points.length === 1 ? 'Click point B' : 'Drag A or B to adjust'}</span>
+          <button className="mini" disabled={!points.length} onClick={onUndo} title="Remove the last point">Undo point</button>
+          <button className="mini" disabled={!points.length} onClick={onClear}>Clear</button>
+        </span>
+      </div>
       <div ref={wrap} className={`align-canvas ${areaMode ? 'area' : ''}`}>
         <Stage
           ref={stage}
@@ -118,8 +128,18 @@ export function AlignPane({ planId, page, width, height, points, onPick, preview
                 <Circle key={i} x={p.x} y={p.y} radius={3 / v.zoom} fill={p.color} opacity={0.85} listening={false} />
               ))}
               {points.map((p, i) => (
-                <Group key={i} x={p.x} y={p.y} listening={false}>
-                  <Circle radius={9 / v.zoom} stroke={MARK[i]} strokeWidth={2 / v.zoom} />
+                <Group
+                  key={i}
+                  x={p.x}
+                  y={p.y}
+                  draggable={!areaMode}
+                  onMouseDown={(e) => (e.cancelBubble = true)}
+                  onMouseUp={(e) => (e.cancelBubble = true)}
+                  onDragEnd={(e) => onMove?.(i, { x: e.target.x(), y: e.target.y() })}
+                  onMouseEnter={(e) => (e.target.getStage()!.container().style.cursor = 'move')}
+                  onMouseLeave={(e) => (e.target.getStage()!.container().style.cursor = '')}
+                >
+                  <Circle radius={9 / v.zoom} stroke={MARK[i]} strokeWidth={2 / v.zoom} fill="rgba(255,255,255,0.01)" />
                   <Circle radius={1.5 / v.zoom} fill={MARK[i]} />
                   <Text x={10 / v.zoom} y={-18 / v.zoom} text={i ? 'B' : 'A'} fontSize={14 / v.zoom} fontStyle="bold" fill={MARK[i]} />
                 </Group>
