@@ -50,6 +50,30 @@ interface State {
 
 const HISTORY = 150;
 
+// Remember each floor's zoom and position in this browser.
+const VIEWS_KEY = 'fs.views';
+function loadViews(): Record<string, View> {
+  try {
+    const v = JSON.parse(localStorage.getItem(VIEWS_KEY) ?? '{}');
+    const out: Record<string, View> = {};
+    for (const [k, x] of Object.entries(v as Record<string, View>)) if (x && x.zoom > 0.01 && Number.isFinite(x.x) && Number.isFinite(x.y)) out[k] = x;
+    return out;
+  } catch {
+    return {};
+  }
+}
+let saveTimer: ReturnType<typeof setTimeout> | undefined;
+function saveViews(v: Record<string, View>) {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(VIEWS_KEY, JSON.stringify(v));
+    } catch {
+      /* storage unavailable */
+    }
+  }, 300);
+}
+
 export const useStore = create<State>((set, get) => ({
   project: null,
   saveState: 'saved',
@@ -63,7 +87,7 @@ export const useStore = create<State>((set, get) => ({
   activeCode: null,
   selection: { kind: 'none' },
   draft: [],
-  views: {},
+  views: loadViews(),
   clipboard: null,
   rightTab: 'properties',
   fitNonce: 0,
@@ -142,7 +166,11 @@ export const useStore = create<State>((set, get) => ({
   setActiveCode: (code) => set({ activeCode: code, tool: code ? 'place' : 'select', draft: [] }),
   select: (s) => set({ selection: s, rightTab: s.kind === 'room' ? 'rooms' : s.kind !== 'none' ? 'properties' : get().rightTab }),
   setDraft: (pts) => set({ draft: pts }),
-  setView: (floorId, v) => set({ views: { ...get().views, [floorId]: v } }),
+  setView: (floorId, v) => {
+    const views = { ...get().views, [floorId]: v };
+    set({ views });
+    saveViews(views);
+  },
   setClipboard: (c) => set({ clipboard: c }),
   setRightTab: (t) => set({ rightTab: t }),
 }));

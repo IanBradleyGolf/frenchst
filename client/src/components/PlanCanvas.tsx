@@ -75,12 +75,16 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
 
   // Fit on first open
   useEffect(() => {
-    if (!view && size.w > 100) fit();
+    if ((!view || !(view.zoom > 0.01)) && size.w > 100) fit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [floor.id, size.w, size.h]);
 
+  // Fit when asked (F, Fit button, after cropping) — not when this floor is reopened.
+  const lastNonce = useRef(fitNonce);
   useEffect(() => {
-    if (fitNonce) fit();
+    if (fitNonce === lastNonce.current) return;
+    lastNonce.current = fitNonce;
+    fit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitNonce]);
 
@@ -120,6 +124,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
   const v: View = view ?? { zoom: 1, x: 0, y: 0 };
 
   function fit() {
+    if (size.w < 100 || size.h < 100) return;
     const pad = 24;
     const c = floor.crop ?? { x1: 0, y1: 0, x2: floor.width, y2: floor.height };
     const cw = c.x2 - c.x1, ch = c.y2 - c.y1;
