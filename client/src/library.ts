@@ -54,6 +54,7 @@ export const DEFAULT_LIBRARY: Component[] = [
   { code: 'INT', name: 'Intercom / access point', category: 'Data, AV & security', symbol: 'intercom', color: '#0c4a6e', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 165 },
   { code: 'PIR', name: 'Security motion detector (PIR)', category: 'Data, AV & security', symbol: 'sensor', color: '#be123c', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 120 },
   { code: 'SIR', name: 'Alarm siren / screamer', category: 'Data, AV & security', symbol: 'speaker', color: '#be123c', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 120 },
+  { code: 'RACK', name: 'Rack enclosure (SP1, floorstanding 600x600, 18RU)', category: 'Data, AV & security', symbol: 'rack', color: '#92400e', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 0 },
   { code: 'AK', name: 'Security alarm keypad (Ness Navigator touchscreen)', category: 'Data, AV & security', symbol: 'alarm', color: '#be123c', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 120 },
   { code: 'ACK', name: 'Access control keypad (Rosslare, prox & PIN)', category: 'Data, AV & security', symbol: 'access', color: '#be123c', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 120 },
   { code: 'ES', name: 'Electric door strike', category: 'Data, AV & security', symbol: 'strike', color: '#be123c', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 120 },
@@ -65,7 +66,7 @@ export const DEFAULT_LIBRARY: Component[] = [
 
 export const SYMBOL_KINDS: Component['symbol'][] = [
   'downlight', 'pinlight', 'adjustable', 'wall', 'pendant', 'linear', 'strip', 'lowlevel', 'uplight', 'spike', 'spot', 'panel', 'surface', 'fan',
-  'keypad', 'sensor', 'alarm', 'access', 'strike', 'doorctl', 'soundbar', 'sub', 'touchscreen', 'gpo', 'usb', 'gpo-wp', 'data', 'tv', 'wap', 'camera', 'intercom', 'speaker', 'exhaust', 'towel', 'smoke', 'circuit', 'generic',
+  'keypad', 'sensor', 'rack', 'alarm', 'access', 'strike', 'doorctl', 'soundbar', 'sub', 'touchscreen', 'gpo', 'usb', 'gpo-wp', 'data', 'tv', 'wap', 'camera', 'intercom', 'speaker', 'exhaust', 'towel', 'smoke', 'circuit', 'generic',
 ];
 
 export const CONTROLS: Component['control'][] = ['DALI', 'DALI relay', 'Phase dim', 'On/off', 'Control device', 'Power', 'Low voltage', 'Other'];

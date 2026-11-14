@@ -1,6 +1,7 @@
 export type SymbolKind =
   | 'downlight'
   | 'alarm'
+  | 'rack'
   | 'access'
   | 'strike'
   | 'doorctl'

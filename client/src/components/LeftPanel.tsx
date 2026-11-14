@@ -5,6 +5,7 @@ import { FloorDialog } from './FloorDialog';
 import { ComponentDialog } from './ComponentDialog';
 import { layerCounts, layerOf } from '../layers';
 import { duplicateFloor } from '../floors';
+import { DEFAULT_LIBRARY } from '../library';
 
 function useCollapsed() {
   const [set, setSet] = useState<Set<string>>(() => {
@@ -161,6 +162,15 @@ export function LeftPanel() {
           </span>
         </div>
         {!col.is('components') && <>
+        {(() => {
+          const have = new Set(data.library.map((c) => c.code));
+          const missing = DEFAULT_LIBRARY.filter((c) => !have.has(c.code));
+          return missing.length ? (
+            <button className="mini" title={missing.map((c) => `${c.code} – ${c.name}`).join('\n')} onClick={() => mutate((d) => d.library.push(...structuredClone(missing)))}>
+              Add {missing.length} new standard component{missing.length > 1 ? 's' : ''} ({missing.slice(0, 4).map((c) => c.code).join(', ')}{missing.length > 4 ? '…' : ''})
+            </button>
+          ) : null;
+        })()}
         <input className="search" placeholder="Search code or name" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search components" />
         <div className="lib">
           {groups.map(([cat, list]) => (
