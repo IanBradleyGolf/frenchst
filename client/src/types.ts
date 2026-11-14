@@ -105,6 +105,7 @@ export interface Floor {
   items: Item[];
   erase?: EraseRect[]; // white-outs over the plan drawing
   texts?: TextNote[];
+  links?: [string, string][]; // explicit wires between item ids (circuits.ts)
   bends?: Record<string, number>; // wire arc per linked pair (key from circuits.bendKey)
 }
 

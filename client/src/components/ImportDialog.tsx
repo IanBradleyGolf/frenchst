@@ -144,10 +144,23 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
         items[k].circuit = names.get(r);
       });
     }
+    const newLinks: [string, string][] = [];
+    if (snap && snap.links.length) {
+      const idx = new Map(planned.map((p, k) => [p.i, k]));
+      for (const [a, b] of snap.links) {
+        const i = idx.get(a), j = idx.get(b);
+        if (i !== undefined && j !== undefined && i !== j) newLinks.push([items[i].id, items[j].id]);
+      }
+    }
     mutate((d) => {
       const f = d.floors.find((x) => x.id === floor.id)!;
       if (area) f.importArea = area;
-      if (replace) f.items = f.items.filter((i) => i.layer !== layerName);
+      if (replace) {
+        f.items = f.items.filter((i) => i.layer !== layerName);
+        const live = new Set(f.items.map((i) => i.id));
+        f.links = (f.links ?? []).filter(([a, b]) => live.has(a) && live.has(b));
+      }
+      if (newLinks.length) f.links = [...(f.links ?? []), ...newLinks];
       d.hiddenLayers = (d.hiddenLayers ?? []).filter((h) => h !== layerName);
       f.items.push(...items);
     });

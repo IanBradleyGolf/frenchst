@@ -25,6 +25,75 @@ export function spanningLinks(items: Item[]): [Item, Item][] {
   return out;
 }
 
+/**
+ * The wires drawn for one circuit: the floor's explicit links between its items, plus the
+ * shortest joins needed to connect anything left unconnected (e.g. a circuit typed by hand,
+ * or projects from before wires were stored).
+ */
+export function circuitLinks(list: Item[], links: [string, string][] | undefined): [Item, Item][] {
+  const idx = new Map(list.map((it, k) => [it.id, k]));
+  const p = list.map((_, k) => k);
+  const find = (k: number): number => (p[k] === k ? k : (p[k] = find(p[k])));
+  const out: [Item, Item][] = [];
+  const seen = new Set<string>();
+  for (const [a, b] of links ?? []) {
+    const i = idx.get(a), j = idx.get(b);
+    if (i === undefined || j === undefined || i === j) continue;
+    const key = a < b ? a + '|' + b : b + '|' + a;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push([list[i], list[j]]);
+    p[find(i)] = find(j);
+  }
+  if (list.length < 2) return out;
+  const roots = new Set(list.map((_, k) => find(k)));
+  if (roots.size === 1) return out;
+  const pairs: [number, number, number][] = [];
+  for (let i = 0; i < list.length; i++)
+    for (let j = i + 1; j < list.length; j++) pairs.push([Math.hypot(list[i].x - list[j].x, list[i].y - list[j].y), i, j]);
+  pairs.sort((x, y) => x[0] - y[0]);
+  for (const [, i, j] of pairs) {
+    if (find(i) === find(j)) continue;
+    p[find(i)] = find(j);
+    out.push([list[i], list[j]]);
+  }
+  return out;
+}
+
+/** Store a circuit's currently drawn wires as explicit links, so later edits change only what is asked. */
+function materialize(f: Floor, name: string | undefined) {
+  if (!name) return;
+  const list = f.items.filter((i) => i.circuit === name);
+  const ids = new Set(list.map((i) => i.id));
+  const keep = (f.links ?? []).filter(([a, b]) => !(ids.has(a) && ids.has(b)));
+  f.links = [...keep, ...circuitLinks(list, f.links).map(([a, b]) => [a.id, b.id] as [string, string])];
+}
+
+/** Give each connected part of a circuit (by explicit links) its own name; lone lights lose it. */
+function splitByLinks(f: Floor, name: string) {
+  const list = f.items.filter((i) => i.circuit === name);
+  const idx = new Map(list.map((it, k) => [it.id, k]));
+  const p = list.map((_, k) => k);
+  const find = (k: number): number => (p[k] === k ? k : (p[k] = find(p[k])));
+  for (const [a, b] of f.links ?? []) {
+    const i = idx.get(a), j = idx.get(b);
+    if (i !== undefined && j !== undefined) p[find(i)] = find(j);
+  }
+  const groups = new Map<number, Item[]>();
+  list.forEach((it, k) => {
+    const r = find(k);
+    if (!groups.has(r)) groups.set(r, []);
+    groups.get(r)!.push(it);
+  });
+  [...groups.values()].sort((g, h) => h.length - g.length).forEach((g, gi) => {
+    if (g.length === 1) delete g[0].circuit;
+    else if (gi > 0) {
+      const n = nextCircuit(f);
+      for (const it of g) it.circuit = n;
+    }
+  });
+}
+
 export function circuitsOf(floor: Floor): Map<string, Item[]> {
   const m = new Map<string, Item[]>();
   for (const it of floor.items) {
@@ -61,7 +130,9 @@ export function linkSelected(floor: Floor) {
   for (const it of sel) if (it.circuit) counts.set(it.circuit, (counts.get(it.circuit) ?? 0) + 1);
   const name = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? nextCircuit(floor);
   st.mutate((d) => {
-    for (const it of d.floors.find((f) => f.id === floor.id)!.items) if (ids.has(it.id)) it.circuit = name;
+    const f = d.floors.find((f) => f.id === floor.id)!;
+    for (const c of new Set(f.items.filter((i) => ids.has(i.id)).map((i) => i.circuit))) materialize(f, c);
+    for (const it of f.items) if (ids.has(it.id)) it.circuit = name;
   });
 }
 
@@ -70,7 +141,12 @@ export function unlinkSelected(floor: Floor) {
   if (st.selection.kind !== 'items') return;
   const ids = new Set(st.selection.ids);
   st.mutate((d) => {
-    for (const it of d.floors.find((f) => f.id === floor.id)!.items) if (ids.has(it.id)) delete it.circuit;
+    const f = d.floors.find((f) => f.id === floor.id)!;
+    const olds = new Set(f.items.filter((i) => ids.has(i.id)).map((i) => i.circuit).filter(Boolean) as string[]);
+    for (const c of olds) materialize(f, c);
+    for (const it of f.items) if (ids.has(it.id)) delete it.circuit;
+    f.links = (f.links ?? []).filter(([a, b]) => !ids.has(a) && !ids.has(b));
+    for (const c of olds) splitByLinks(f, c);
   });
 }
 
@@ -78,12 +154,16 @@ export function unlinkSelected(floor: Floor) {
 export function wireTogether(floor: Floor, a: Item, b: Item) {
   const st = useStore.getState();
   if (a.id === b.id) return;
-  const name = a.circuit ?? b.circuit ?? nextCircuit(floor);
-  const old = b.circuit && b.circuit !== name ? b.circuit : null;
   st.mutate((d) => {
-    for (const it of d.floors.find((f) => f.id === floor.id)!.items) {
-      if (it.id === a.id || it.id === b.id || (old && it.circuit === old)) it.circuit = name;
-    }
+    const f = d.floors.find((x) => x.id === floor.id)!;
+    const A = f.items.find((i) => i.id === a.id), B = f.items.find((i) => i.id === b.id);
+    if (!A || !B) return;
+    materialize(f, A.circuit);
+    if (B.circuit !== A.circuit) materialize(f, B.circuit);
+    const name = A.circuit ?? B.circuit ?? nextCircuit(f);
+    const old = B.circuit && B.circuit !== name ? B.circuit : null;
+    for (const it of f.items) if (it.id === A.id || it.id === B.id || (old && it.circuit === old)) it.circuit = name;
+    if (!(f.links ?? []).some(([x, y]) => (x === A.id && y === B.id) || (x === B.id && y === A.id))) f.links = [...(f.links ?? []), [A.id, B.id]];
   });
 }
 
@@ -120,34 +200,10 @@ export function deleteWire(floorId: string, aId: string, bId: string) {
     const f = d.floors.find((x) => x.id === floorId)!;
     const a = f.items.find((i) => i.id === aId), b = f.items.find((i) => i.id === bId);
     if (!a?.circuit || a.circuit !== b?.circuit) return;
-    const name = a.circuit;
-    const list = f.items.filter((i) => i.circuit === name);
-    const idx = new Map(list.map((it, k) => [it.id, k]));
-    const p = list.map((_, k) => k);
-    const find = (k: number): number => (p[k] === k ? k : (p[k] = find(p[k])));
-    for (const [x, y] of spanningLinks(list)) {
-      if ((x.id === aId && y.id === bId) || (x.id === bId && y.id === aId)) continue;
-      p[find(idx.get(x.id)!)] = find(idx.get(y.id)!);
-    }
-    const groups = new Map<number, typeof list>();
-    list.forEach((it, k) => {
-      const r = find(k);
-      if (!groups.has(r)) groups.set(r, []);
-      groups.get(r)!.push(it);
-    });
-    const sorted = [...groups.values()].sort((g, h) => h.length - g.length);
-    sorted.forEach((g, gi) => {
-      if (g.length === 1) delete g[0].circuit;
-      else if (gi > 0) {
-        const n = nextCircuit(f);
-        for (const it of g) it.circuit = n;
-      }
-    });
-    if (sorted[0].length === 1) delete sorted[0][0].circuit;
-    if (f.bends) {
-      const { key } = bendKey(a, b);
-      delete f.bends[key];
-    }
+    materialize(f, a.circuit);
+    f.links = (f.links ?? []).filter(([x, y]) => !((x === aId && y === bId) || (x === bId && y === aId)));
+    splitByLinks(f, a.circuit);
+    if (f.bends) delete f.bends[bendKey(a, b).key];
   });
   st.select({ kind: 'none' });
 }

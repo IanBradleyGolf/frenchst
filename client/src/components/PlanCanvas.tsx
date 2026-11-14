@@ -11,7 +11,7 @@ import { SymbolShape } from './SymbolShape';
 import { createRoom } from '../rooms';
 import { isVisible } from '../layers';
 import { addText } from '../marks';
-import { bendFor, circuitColor, circuitsOf, spanningLinks, wireGeom, wireTogether } from '../circuits';
+import { bendFor, circuitColor, circuitLinks, circuitsOf, wireGeom, wireTogether } from '../circuits';
 
 const RENDER_SCALE = 3;
 const DWELLING_COLORS = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed'];
@@ -93,11 +93,14 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
       }
     };
     const up = (e: KeyboardEvent) => e.code === 'Space' && setSpace(false);
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setWireFrom(null);
+    window.addEventListener('keydown', esc);
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     return () => {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
+      window.removeEventListener('keydown', esc);
     };
   }, []);
 
@@ -458,7 +461,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                 const col = circuitColor(name);
                 const live = list.map((it) => (drag && selectedIds.has(it.id) ? { ...it, x: it.x + drag.dx, y: it.y + drag.dy } : it));
                 const allSel = list.every((it) => selectedIds.has(it.id));
-                return spanningLinks(live).map(([p, q], k) => {
+                return circuitLinks(live, floor.links).map(([p, q], k) => {
                   const g = wireGeom(floor, p, q, bendPrev);
                   const { a, b } = g;
                   const wSel = selection.kind === 'wire' && ((selection.a === a.id && selection.b === b.id) || (selection.a === b.id && selection.b === a.id));
