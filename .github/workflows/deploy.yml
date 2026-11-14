@@ -1,0 +1,48 @@
+name: Build and deploy to Azure App Service
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  # Set this repository variable (Settings → Secrets and variables → Actions → Variables)
+  AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck and build
+        run: |
+          npm run typecheck
+          npm run build
+
+      - name: Assemble deployment package
+        run: |
+          rm -rf deploy && mkdir -p deploy
+          cp -r server/dist deploy/dist
+          cp -r client/dist deploy/public
+          node -e "
+            const p=require('./server/package.json');
+            const out={name:'frenchst',private:true,type:'module',main:'dist/index.js',
+              scripts:{start:'node dist/index.js'},engines:{node:'>=20'},dependencies:p.dependencies};
+            require('fs').writeFileSync('deploy/package.json',JSON.stringify(out,null,2));"
+          cd deploy && npm install --omit=dev --no-audit --no-fund
+
+      - name: Deploy
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: deploy
