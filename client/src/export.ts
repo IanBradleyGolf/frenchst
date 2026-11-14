@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 import { PDFDocument, StandardFonts, rgb, degrees, type PDFPage, type PDFFont } from 'pdf-lib';
 import { planBytes } from './pdf';
-import { byRoom, libraryMap, placedItems, totals, unknownComponent } from './schedule';
+import { byRoom, copiesOf, libraryMap, placedItems, totals, unknownComponent } from './schedule';
 import { SYMBOLS } from './symbols';
 import type { Component, Floor, Project } from './types';
 
@@ -26,20 +26,23 @@ export function exportExcel(project: Project) {
   const wb = XLSX.utils.book_new();
 
   const tot = totals(data, all);
+  const n = copiesOf(data);
   const sumRows: Record<string, string | number>[] = tot.map((l) => ({
     Code: l.component.code,
     Component: l.component.name,
     Category: l.component.category,
     Control: l.component.control,
     Supplier: l.component.supplier,
-    Qty: l.qty,
+    'Qty per dwelling': l.qty,
+    [`Qty ×${n}`]: l.qty * n,
     'Supply rate': l.component.supplyRate,
     'Install rate': l.component.installRate,
-    'Supply $': l.supply,
-    'Install $': l.install,
-    'Total $': l.total,
+    [`Supply $ ×${n}`]: l.supply * n,
+    [`Install $ ×${n}`]: l.install * n,
+    [`Total $ ×${n}`]: l.total * n,
   }));
-  sumRows.push({ Code: '', Component: 'Total', Category: '', Control: '', Supplier: '', Qty: tot.reduce((a, l) => a + l.qty, 0), 'Supply rate': 0, 'Install rate': 0, 'Supply $': tot.reduce((a, l) => a + l.supply, 0), 'Install $': tot.reduce((a, l) => a + l.install, 0), 'Total $': tot.reduce((a, l) => a + l.total, 0) });
+  const S = (k: 'qty' | 'supply' | 'install' | 'total') => tot.reduce((a, l) => a + l[k], 0);
+  sumRows.push({ Code: '', Component: 'Total', Category: '', Control: '', Supplier: '', 'Qty per dwelling': S('qty'), [`Qty ×${n}`]: S('qty') * n, 'Supply rate': '', 'Install rate': '', [`Supply $ ×${n}`]: S('supply') * n, [`Install $ ×${n}`]: S('install') * n, [`Total $ ×${n}`]: S('total') * n });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sumRows), 'Totals');
 
   // Code × dwelling
@@ -197,12 +200,12 @@ async function scheduleSheets(out: PDFDocument, project: Project, font: PDFFont,
   page.drawText(`${project.name} – component schedule`, { x: 40, y, size: 16, font: bold });
   y -= 28;
 
-  const sections: { title: string; floors: Floor[]; dwelling?: string }[] = [{ title: 'Whole project', floors: data.floors }];
-  for (const d of data.dwellings) sections.push({ title: d, floors: data.floors, dwelling: d });
+  const n = copiesOf(data);
+  const sections: { title: string; floors: Floor[] }[] = [{ title: `Component schedule – one dwelling, quantities and costs for ${n} identical dwellings`, floors: data.floors }];
+  for (const f of data.floors) sections.push({ title: f.name, floors: [f] });
 
   for (const sec of sections) {
-    let items = placedItems(data, sec.floors);
-    if (sec.dwelling) items = items.filter((p) => p.dwelling === sec.dwelling);
+    const items = placedItems(data, sec.floors);
     if (!items.length) continue;
     const tot = totals(data, items);
     if (y < 120 + tot.length * 13) newPage();
@@ -210,20 +213,22 @@ async function scheduleSheets(out: PDFDocument, project: Project, font: PDFFont,
     y -= 18;
     line([
       { t: 'Symbol', x: 40, f: bold }, { t: 'Code', x: 80, f: bold }, { t: 'Component', x: 130, f: bold }, { t: 'Control', x: 470, f: bold }, { t: 'Supplier', x: 560, f: bold },
-      { t: 'Qty', x: 660, w: 40, right: true, f: bold }, { t: 'Supply $', x: 720, w: 70, right: true, f: bold }, { t: 'Install $', x: 800, w: 70, right: true, f: bold }, { t: 'Total $', x: 880, w: 80, right: true, f: bold },
+      { t: 'Per dwelling', x: 640, w: 60, right: true, f: bold }, { t: `Qty ×${n}`, x: 710, w: 50, right: true, f: bold },
+      { t: 'Supply $', x: 770, w: 70, right: true, f: bold }, { t: 'Install $', x: 850, w: 70, right: true, f: bold }, { t: 'Total $', x: 930, w: 80, right: true, f: bold },
     ]);
     for (const l of tot) {
       drawSymbol(page, bold, l.component, 52, H - y - 3, 0, 4, H);
       line([
         { t: l.component.code, x: 80 }, { t: l.component.name.slice(0, 60), x: 130 }, { t: l.component.control, x: 470 }, { t: l.component.supplier, x: 560 },
-        { t: String(l.qty), x: 660, w: 40, right: true }, { t: fmt(l.supply), x: 720, w: 70, right: true }, { t: fmt(l.install), x: 800, w: 70, right: true }, { t: fmt(l.total), x: 880, w: 80, right: true },
+        { t: String(l.qty), x: 640, w: 60, right: true }, { t: String(l.qty * n), x: 710, w: 50, right: true },
+        { t: fmt(l.supply * n), x: 770, w: 70, right: true }, { t: fmt(l.install * n), x: 850, w: 70, right: true }, { t: fmt(l.total * n), x: 930, w: 80, right: true },
       ]);
       if (y < 50) newPage();
     }
+    const S = (k: 'qty' | 'supply' | 'install' | 'total') => tot.reduce((a, l) => a + l[k], 0);
     line([
-      { t: 'Total', x: 130, f: bold }, { t: String(tot.reduce((a, l) => a + l.qty, 0)), x: 660, w: 40, right: true, f: bold },
-      { t: fmt(tot.reduce((a, l) => a + l.supply, 0)), x: 720, w: 70, right: true, f: bold }, { t: fmt(tot.reduce((a, l) => a + l.install, 0)), x: 800, w: 70, right: true, f: bold },
-      { t: fmt(tot.reduce((a, l) => a + l.total, 0)), x: 880, w: 80, right: true, f: bold },
+      { t: 'Total', x: 130, f: bold }, { t: String(S('qty')), x: 640, w: 60, right: true, f: bold }, { t: String(S('qty') * n), x: 710, w: 50, right: true, f: bold },
+      { t: fmt(S('supply') * n), x: 770, w: 70, right: true, f: bold }, { t: fmt(S('install') * n), x: 850, w: 70, right: true, f: bold }, { t: fmt(S('total') * n), x: 930, w: 80, right: true, f: bold },
     ]);
     y -= 14;
   }

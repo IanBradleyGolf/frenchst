@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useFloor, useStore } from '../store';
 import { distance, mirrorItems, mirrorRoom, roomAt, polygonArea } from '../geometry';
-import { byRoom, libraryMap, money, NO_DWELLING, placedItems, totals } from '../schedule';
+import { byRoom, copiesOf, libraryMap, money, NO_DWELLING, placedItems, totals } from '../schedule';
 import { svgFor } from '../symbols';
 import { api } from '../api';
 import type { Floor, ProjectData, Revision } from '../types';
@@ -271,9 +271,15 @@ function Schedule() {
   const unassigned = items.filter((p) => p.dwelling === NO_DWELLING).length;
   const sum = (k: 'qty' | 'supply' | 'install' | 'total') => tot.reduce((a, l) => a + l[k], 0);
   const lib = libraryMap(data);
+  const n = copiesOf(data);
+  const { mutate } = useStore.getState();
 
   return (
     <div className="pad stack">
+      <div className="row gap">
+        <label htmlFor="copies" className="small" style={{ margin: 0 }}>Identical dwellings built from this layout</label>
+        <input id="copies" type="number" min={1} max={20} value={n} style={{ width: 60 }} onChange={(e) => mutate((d) => (d.copies = Math.max(1, Number(e.target.value) || 1)), 'copies')} />
+      </div>
       <div className="row gap wrap">
         <select value={scope} onChange={(e) => setScope(e.target.value as any)} aria-label="Scope">
           <option value="project">All floors</option>
@@ -289,11 +295,11 @@ function Schedule() {
           <button className={view === 'rooms' ? 'sel' : ''} onClick={() => setView('rooms')}>By room</button>
         </div>
       </div>
-      {unassigned > 0 && dwelling === 'all' && <p className="warn small">{unassigned} items are not inside a room, so they have no dwelling.</p>}
+      {unassigned > 0 && dwelling === 'all' && data.floors.some((f) => f.rooms.length > 0) && <p className="warn small">{unassigned} items are not inside a room yet.</p>}
       {view === 'totals' ? (
         <table className="tbl">
           <thead>
-            <tr><th></th><th>Code</th><th className="num">Qty</th><th className="num">Supply</th><th className="num">Install</th><th className="num">Total</th></tr>
+            <tr><th></th><th>Code</th><th className="num">Per dw.</th><th className="num">×{n} qty</th><th className="num">Supply</th><th className="num">Install</th><th className="num">Total</th></tr>
           </thead>
           <tbody>
             {tot.map((l) => (
@@ -301,16 +307,17 @@ function Schedule() {
                 <td><span dangerouslySetInnerHTML={{ __html: svgFor(l.component.symbol, l.component.color, 16) }} /></td>
                 <td className="mono">{l.component.code}</td>
                 <td className="num">{l.qty}</td>
-                <td className="num">{money(l.supply)}</td>
-                <td className="num">{money(l.install)}</td>
-                <td className="num">{money(l.total)}</td>
+                <td className="num">{l.qty * n}</td>
+                <td className="num">{money(l.supply * n)}</td>
+                <td className="num">{money(l.install * n)}</td>
+                <td className="num">{money(l.total * n)}</td>
               </tr>
             ))}
-            {tot.length === 0 && <tr><td colSpan={6} className="muted">Nothing placed yet.</td></tr>}
+            {tot.length === 0 && <tr><td colSpan={7} className="muted">Nothing placed yet.</td></tr>}
           </tbody>
           {tot.length > 0 && (
             <tfoot>
-              <tr><td></td><td>Total</td><td className="num">{sum('qty')}</td><td className="num">{money(sum('supply'))}</td><td className="num">{money(sum('install'))}</td><td className="num">{money(sum('total'))}</td></tr>
+              <tr><td></td><td>Total</td><td className="num">{sum('qty')}</td><td className="num">{sum('qty') * n}</td><td className="num">{money(sum('supply') * n)}</td><td className="num">{money(sum('install') * n)}</td><td className="num">{money(sum('total') * n)}</td></tr>
             </tfoot>
           )}
         </table>
@@ -334,7 +341,7 @@ function Schedule() {
           {rooms.length === 0 && <p className="muted">Nothing placed yet.</p>}
         </div>
       )}
-      <p className="muted small">Rates ex GST. Edit rates in the component library.</p>
+      <p className="muted small">Costs are for all {n} dwellings, ex GST. Edit rates in the component library.</p>
     </div>
   );
 }

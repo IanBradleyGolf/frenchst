@@ -325,6 +325,9 @@ export function PlanCanvas({ floor, showLabels, showRooms }: { floor: Floor; sho
                 />
               ))}
 
+            {floor.importArea && (
+              <Rect x={floor.importArea.x1} y={floor.importArea.y1} width={floor.importArea.x2 - floor.importArea.x1} height={floor.importArea.y2 - floor.importArea.y1} stroke="#16a34a" strokeWidth={1.2 / v.zoom} dash={[8 / v.zoom, 4 / v.zoom]} listening={false} />
+            )}
             {floor.axis && (
               <Line points={[floor.axis.x1, floor.axis.y1, floor.axis.x2, floor.axis.y2]} stroke="#e11d48" strokeWidth={1.5 / v.zoom} dash={[10 / v.zoom, 4 / v.zoom, 2 / v.zoom, 4 / v.zoom]} listening={false} />
             )}

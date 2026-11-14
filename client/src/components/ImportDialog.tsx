@@ -25,6 +25,8 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
   const [dstPts, setDstPts] = useState<Pt[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [replace, setReplace] = useState(false);
+  const [area, setArea] = useState(floor.importArea ?? null);
+  const [areaMode, setAreaMode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,12 +74,13 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
       for (const l of list) {
         const p = xf.apply(l);
         if (p.x < 0 || p.y < 0 || p.x > floor.width || p.y > floor.height) continue;
+        if (area && (p.x < area.x1 || p.x > area.x2 || p.y < area.y1 || p.y > area.y2)) continue;
         out.push({ code, x: p.x, y: p.y, color: lib.get(code)?.color ?? '#64748b' });
       }
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [xf?.scale, xf?.rotationDeg, srcPts, dstPts, groups, mapping, floor.width, floor.height]);
+  }, [xf?.scale, xf?.rotationDeg, srcPts, dstPts, groups, mapping, floor.width, floor.height, area]);
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -102,7 +105,8 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
     const items = planned.map((p) => ({ id: uid(), code: p.code, x: p.x, y: p.y, rot: 0 }));
     mutate((d) => {
       const f = d.floors.find((x) => x.id === floor.id)!;
-      if (replace) f.items = f.items.filter((i) => !codes.has(i.code));
+      if (area) f.importArea = area;
+      if (replace) f.items = f.items.filter((i) => !codes.has(i.code) || (area && (i.x < area.x1 || i.x > area.x2 || i.y < area.y1 || i.y > area.y2)));
       f.items.push(...items);
     });
     select({ kind: 'items', ids: items.map((i) => i.id) });
@@ -157,7 +161,7 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
           <div className="import-grid">
             <div className="import-panes">
               <AlignPane planId={planId} page={page} width={src.width} height={src.height} points={srcPts} onPick={(p) => setSrcPts((x) => (x.length >= 2 ? [p] : [...x, p]))} title={`Source · page ${page}`} />
-              <AlignPane planId={floor.planId} page={floor.page} width={floor.width} height={floor.height} points={dstPts} onPick={(p) => setDstPts((x) => (x.length >= 2 ? [p] : [...x, p]))} preview={planned} title={`Your plan · ${floor.name}`} />
+              <AlignPane planId={floor.planId} page={floor.page} width={floor.width} height={floor.height} points={dstPts} onPick={(p) => setDstPts((x) => (x.length >= 2 ? [p] : [...x, p]))} preview={planned} title={`Your plan · ${floor.name}`} areaMode={areaMode} area={area} onArea={(a) => { setArea(a); setAreaMode(false); }} />
             </div>
             <div className="import-side stack">
               <p className="small">
@@ -167,6 +171,15 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
               <div className="row gap">
                 <button onClick={() => { setSrcPts([]); setDstPts([]); }}>Reset points</button>
                 <button onClick={() => { setPage(null); setSrcPts([]); }}>Other page</button>
+              </div>
+              <div className="card-inset stack">
+                <b className="small">Dwelling to model</b>
+                <p className="muted small">Both dwellings are identical, so only one is modelled. Draw a box around it on your plan; anything outside is left out.</p>
+                <div className="row gap">
+                  <button className={areaMode ? 'primary' : ''} onClick={() => setAreaMode((m) => !m)}>{areaMode ? 'Drag a box on your plan…' : area ? 'Redraw area' : 'Draw import area'}</button>
+                  {area && <button onClick={() => setArea(null)}>Clear</button>}
+                </div>
+                {!area && <p className="warn small">No area set: items for both dwellings will be imported.</p>}
               </div>
               {xf && <p className="muted small">Scale {xf.scale.toFixed(3)} · rotation {xf.rotationDeg.toFixed(1)}°</p>}
               {labels && keys.length === 0 && <p className="warn small">No component labels found on this page.</p>}

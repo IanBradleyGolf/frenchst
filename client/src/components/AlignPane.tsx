@@ -13,11 +13,15 @@ interface Props {
   onPick: (p: Pt) => void;
   preview?: { x: number; y: number; color: string }[];
   title: string;
+  areaMode?: boolean; // drag draws a rectangle instead of panning
+  area?: { x1: number; y1: number; x2: number; y2: number } | null;
+  onArea?: (a: { x1: number; y1: number; x2: number; y2: number }) => void;
 }
 
 const MARK = ['#dc2626', '#2563eb'];
 
-export function AlignPane({ planId, page, width, height, points, onPick, preview, title }: Props) {
+export function AlignPane({ planId, page, width, height, points, onPick, preview, title, areaMode, area, onArea }: Props) {
+  const [rect, setRect] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const stage = useRef<Konva.Stage>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -53,7 +57,7 @@ export function AlignPane({ planId, page, width, height, points, onPick, preview
   return (
     <div className="align-pane">
       <div className="align-title">{title}</div>
-      <div ref={wrap} className="align-canvas">
+      <div ref={wrap} className={`align-canvas ${areaMode ? 'area' : ''}`}>
         <Stage
           ref={stage}
           width={size.w}
@@ -67,9 +71,20 @@ export function AlignPane({ planId, page, width, height, points, onPick, preview
           }}
           onMouseDown={() => {
             const p = stage.current!.getPointerPosition()!;
+            if (areaMode) {
+              const q = toPage(p.x, p.y);
+              setRect({ x1: q.x, y1: q.y, x2: q.x, y2: q.y });
+              return;
+            }
             drag.current = { sx: p.x, sy: p.y, vx: v.x, vy: v.y, moved: false };
           }}
           onMouseMove={() => {
+            if (rect) {
+              const p = stage.current!.getPointerPosition()!;
+              const q = toPage(p.x, p.y);
+              setRect({ ...rect, x2: q.x, y2: q.y });
+              return;
+            }
             const d = drag.current;
             if (!d) return;
             const p = stage.current!.getPointerPosition()!;
@@ -77,6 +92,12 @@ export function AlignPane({ planId, page, width, height, points, onPick, preview
             if (d.moved) setV((cur) => ({ ...cur, x: d.vx + p.x - d.sx, y: d.vy + p.y - d.sy }));
           }}
           onMouseUp={(e) => {
+            if (rect) {
+              const r = { x1: Math.min(rect.x1, rect.x2), y1: Math.min(rect.y1, rect.y2), x2: Math.max(rect.x1, rect.x2), y2: Math.max(rect.y1, rect.y2) };
+              setRect(null);
+              if (r.x2 - r.x1 > 5 && r.y2 - r.y1 > 5) onArea?.(r);
+              return;
+            }
             const d = drag.current;
             drag.current = null;
             if (!d || d.moved || e.evt.button !== 0) return;
@@ -89,6 +110,10 @@ export function AlignPane({ planId, page, width, height, points, onPick, preview
             <Group x={v.x} y={v.y} scaleX={v.zoom} scaleY={v.zoom}>
               <Rect width={width} height={height} fill="#fff" />
               {img && <KImage image={img} width={width} height={height} />}
+              {(rect ?? area) && (() => {
+                const r = rect ?? area!;
+                return <Rect x={Math.min(r.x1, r.x2)} y={Math.min(r.y1, r.y2)} width={Math.abs(r.x2 - r.x1)} height={Math.abs(r.y2 - r.y1)} stroke="#16a34a" strokeWidth={2 / v.zoom} dash={[8 / v.zoom, 4 / v.zoom]} fill="rgba(22,163,74,0.06)" listening={false} />;
+              })()}
               {preview?.map((p, i) => (
                 <Circle key={i} x={p.x} y={p.y} radius={3 / v.zoom} fill={p.color} opacity={0.85} listening={false} />
               ))}

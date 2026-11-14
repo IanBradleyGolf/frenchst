@@ -79,6 +79,7 @@ export interface Floor {
   height: number;
   mmPerPt?: number; // set by calibration
   axis?: Axis; // party-wall line for mirror copy
+  importArea?: { x1: number; y1: number; x2: number; y2: number }; // the dwelling being modelled
   rooms: Room[];
   items: Item[];
 }
@@ -87,6 +88,7 @@ export interface ProjectData {
   schema: 1;
   dwellings: string[];
   symbolSize: number; // symbol radius in page points
+  copies?: number; // identical dwellings built from this layout (default 2)
   library: Component[];
   floors: Floor[];
 }

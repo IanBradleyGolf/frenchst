@@ -78,4 +78,6 @@ export function byRoom(items: Placed[]): RoomLine[] {
   return [...m.values()];
 }
 
+export const copiesOf = (data: ProjectData) => Math.max(1, Math.round(data.copies ?? 2));
+
 export const money = (n: number) => n.toLocaleString('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 });

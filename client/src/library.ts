@@ -67,8 +67,9 @@ export const CONTROLS: Component['control'][] = ['DALI', 'DALI relay', 'Phase di
 export function newProjectData(): ProjectData {
   return {
     schema: 1,
-    dwellings: ['Dwelling 1', 'Dwelling 2', 'Common'],
+    dwellings: ['Dwelling', 'External'],
     symbolSize: 4,
+    copies: 2,
     library: structuredClone(DEFAULT_LIBRARY),
     floors: [],
   };
