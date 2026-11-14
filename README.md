@@ -21,9 +21,9 @@ Rev A schedule) plus power, data, AV and control items. Everything in it is edit
 | Part | Choice |
 | --- | --- |
 | Client | React 18, TypeScript, Vite, react-konva (canvas), pdf.js (plan rendering), Zustand (state + undo), SheetJS (Excel), pdf-lib (PDF export) |
-| Server | Node 20, Express, `mssql` |
+| Server | Node 22, Express, `mssql` |
 | Data | Azure SQL: one JSON document per project, PDFs as VARBINARY, revisions as snapshots |
-| Hosting | Azure App Service (Linux, Node 20), deployed by GitHub Actions |
+| Hosting | Azure App Service (Linux, Node 22), deployed by GitHub Actions |
 | Sign-in | App Service Authentication (Easy Auth); the API records `x-ms-client-principal-name` on saves |
 
 ## Run locally
@@ -39,7 +39,7 @@ To use Azure SQL locally, set `SQL_SERVER` / `SQL_DATABASE` (see `.env.example`)
 
 1. **Database.** Create a database on `metricus.database.windows.net` (default name `frenchst`,
    or set `SQL_DATABASE`). Make sure the server has an Entra admin.
-2. **Web App.** Create an App Service: Linux, Node 20 LTS. Under *Identity*, turn on the
+2. **Web App.** Create an App Service: Linux, Node 22 LTS (or 24 LTS). Under *Identity*, turn on the
    system-assigned managed identity.
 3. **Grant access.** Run `sql/setup.sql` against the database, replacing `<web-app-name>`.
    Also allow Azure services through the SQL server firewall (or use a private endpoint).
