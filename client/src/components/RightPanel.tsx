@@ -7,7 +7,7 @@ import { api } from '../api';
 import type { Floor, ProjectData, Revision, TextNote } from '../types';
 import { dwellingColor } from './PlanCanvas';
 import { ImportDialog } from './ImportDialog';
-import { linkSelected, unlinkSelected } from '../circuits';
+import { linkSelected, unlinkSelected, deleteWire } from '../circuits';
 import { deleteMark, updateText } from '../marks';
 
 export function RightPanel({ showLabels, setShowLabels, showRooms, setShowRooms, showWires, setShowWires }: { showLabels: boolean; setShowLabels: (v: boolean) => void; showRooms: boolean; setShowRooms: (v: boolean) => void; showWires: boolean; setShowWires: (v: boolean) => void }) {
@@ -52,6 +52,24 @@ function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms,
       const ids = new Set(items.map((i) => i.id));
       for (const it of d.floors.find((f) => f.id === floor.id)!.items) if (ids.has(it.id)) fn(it);
     }, key);
+
+  if (selection.kind === 'wire') {
+    const a = floor.items.find((i) => i.id === selection.a), b = floor.items.find((i) => i.id === selection.b);
+    if (a && b) {
+      const cct = a.circuit ?? '';
+      return (
+        <div className="pad stack">
+          <h4>Wire {a.code} – {b.code}</h4>
+          <p className="muted small">On circuit {cct} ({floor.items.filter((i) => i.circuit === cct).length} lights). Drag the white dot to change its arc; double-click the dot to straighten it.</p>
+          <div className="row gap wrap">
+            <button className="danger" onClick={() => deleteWire(floor.id, a.id, b.id)} title="Delete (Del). The circuit splits where this wire was.">Delete wire</button>
+            <button onClick={() => select({ kind: 'items', ids: floor.items.filter((i) => i.circuit === cct).map((i) => i.id) })} title="Or double-click the wire">Select whole circuit</button>
+          </div>
+          <p className="muted small">Deleting a wire splits the circuit in two; a light left on its own has no circuit.</p>
+        </div>
+      );
+    }
+  }
 
   if (selection.kind === 'erase' && floor.erase?.some((r) => r.id === selection.id)) {
     const r = floor.erase.find((x) => x.id === selection.id)!;

@@ -8,7 +8,7 @@ import { ImportDialog } from './ImportDialog';
 import { Splitter, usePanelWidth } from './Splitter';
 import { createRoom } from '../rooms';
 import { deleteMark } from '../marks';
-import { linkSelected, unlinkSelected } from '../circuits';
+import { deleteWire, linkSelected, unlinkSelected } from '../circuits';
 import { RightPanel, mirrorCopy } from './RightPanel';
 import { PlanCanvas, isTyping } from './PlanCanvas';
 import type { Tool } from '../types';
@@ -112,6 +112,11 @@ function useShortcuts() {
           f.items = f.items.filter((i) => !selIds.has(i.id));
         });
         st.select({ kind: 'none' });
+        return;
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && st.selection.kind === 'wire') {
+        e.preventDefault();
+        deleteWire(floor.id, st.selection.a, st.selection.b);
         return;
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && (st.selection.kind === 'erase' || st.selection.kind === 'text')) {

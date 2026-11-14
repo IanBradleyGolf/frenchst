@@ -112,3 +112,42 @@ export function bendFor(a: Item, b: Item, p: { x: number; y: number }): number {
   const L2 = dx * dx + dy * dy || 1;
   return ((p.x - mx) * -dy + (p.y - my) * dx) / L2;
 }
+
+/** Remove the drawn wire between items a and b: the circuit splits where the wire was. */
+export function deleteWire(floorId: string, aId: string, bId: string) {
+  const st = useStore.getState();
+  st.mutate((d) => {
+    const f = d.floors.find((x) => x.id === floorId)!;
+    const a = f.items.find((i) => i.id === aId), b = f.items.find((i) => i.id === bId);
+    if (!a?.circuit || a.circuit !== b?.circuit) return;
+    const name = a.circuit;
+    const list = f.items.filter((i) => i.circuit === name);
+    const idx = new Map(list.map((it, k) => [it.id, k]));
+    const p = list.map((_, k) => k);
+    const find = (k: number): number => (p[k] === k ? k : (p[k] = find(p[k])));
+    for (const [x, y] of spanningLinks(list)) {
+      if ((x.id === aId && y.id === bId) || (x.id === bId && y.id === aId)) continue;
+      p[find(idx.get(x.id)!)] = find(idx.get(y.id)!);
+    }
+    const groups = new Map<number, typeof list>();
+    list.forEach((it, k) => {
+      const r = find(k);
+      if (!groups.has(r)) groups.set(r, []);
+      groups.get(r)!.push(it);
+    });
+    const sorted = [...groups.values()].sort((g, h) => h.length - g.length);
+    sorted.forEach((g, gi) => {
+      if (g.length === 1) delete g[0].circuit;
+      else if (gi > 0) {
+        const n = nextCircuit(f);
+        for (const it of g) it.circuit = n;
+      }
+    });
+    if (sorted[0].length === 1) delete sorted[0][0].circuit;
+    if (f.bends) {
+      const { key } = bendKey(a, b);
+      delete f.bends[key];
+    }
+  });
+  st.select({ kind: 'none' });
+}

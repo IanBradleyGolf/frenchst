@@ -109,7 +109,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
   useEffect(() => {
     const tr = trRef.current;
     if (!tr) return;
-    const node = markId && tool === 'select' ? stageRef.current?.findOne('#m-' + markId) : null;
+    const node = markId && (tool === 'select' || (tool === 'erase' && selection.kind === 'erase')) ? stageRef.current?.findOne('#m-' + markId) : null;
     tr.nodes(node ? [node] : []);
     tr.getLayer()?.batchDraw();
   });
@@ -249,7 +249,12 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
     if (marquee && tool === 'erase') {
       const r = { x: Math.min(marquee.x1, marquee.x2), y: Math.min(marquee.y1, marquee.y2), w: Math.abs(marquee.x2 - marquee.x1), h: Math.abs(marquee.y2 - marquee.y1) };
       setMarquee(null);
-      if (r.w > 1 / v.zoom && r.h > 1 / v.zoom) {
+      if (r.w < 4 / v.zoom && r.h < 4 / v.zoom) {
+        const hit = [...(floor.erase ?? [])].reverse().find((q) => r.x >= q.x && r.x <= q.x + q.w && r.y >= q.y && r.y <= q.y + q.h);
+        select(hit ? { kind: 'erase', id: hit.id } : { kind: 'none' });
+        return;
+      }
+      {
         const id = uid();
         mutate((d) => {
           const f = d.floors.find((x) => x.id === floor.id)!;
@@ -355,10 +360,14 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                         strokeWidth={0.8 / v.zoom}
                         dash={[4 / v.zoom, 3 / v.zoom]}
                         strokeScaleEnabled={false}
-                        listening={tool === 'select'}
-                        draggable={tool === 'select' && sel}
+                        listening={tool === 'erase'}
+                        draggable={tool === 'erase' && sel}
                         onMouseDown={(e) => {
-                          if (tool !== 'select' || space || e.evt.button !== 0) return;
+                          if (tool !== 'erase' || space || e.evt.button !== 0 || !sel) return;
+                          e.cancelBubble = true; // drag the selected box; other clicks draw / pick
+                        }}
+                        onClick={(e) => {
+                          if (tool !== 'erase' || sel) return;
                           e.cancelBubble = true;
                           select({ kind: 'erase', id: r.id });
                         }}
@@ -452,6 +461,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                 return spanningLinks(live).map(([p, q], k) => {
                   const g = wireGeom(floor, p, q, bendPrev);
                   const { a, b } = g;
+                  const wSel = selection.kind === 'wire' && ((selection.a === a.id && selection.b === b.id) || (selection.a === b.id && selection.b === a.id));
                   const setBend = (bend: number | null) =>
                     mutate((d) => {
                       const f = d.floors.find((x) => x.id === floor.id)!;
@@ -465,16 +475,26 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                         points={[a.x, a.y, g.apex.x, g.apex.y, b.x, b.y]}
                         tension={0.5}
                         stroke={col}
-                        strokeWidth={(allSel ? 2.2 : 1.3) / v.zoom}
+                        strokeWidth={(wSel ? 3 : allSel ? 2.2 : 1.3) / v.zoom}
                         dash={[6 / v.zoom, 4 / v.zoom]}
-                        hitStrokeWidth={8 / v.zoom}
+                        hitStrokeWidth={10 / v.zoom}
+                        shadowColor={wSel ? '#f97316' : undefined}
+                        shadowBlur={wSel ? 6 / v.zoom : 0}
+                        shadowOpacity={wSel ? 0.9 : 0}
+                        onMouseEnter={(e) => tool === 'select' && (e.target.getStage()!.container().style.cursor = 'pointer')}
+                        onMouseLeave={(e) => (e.target.getStage()!.container().style.cursor = '')}
                         onMouseDown={(e) => {
+                          if (tool !== 'select' || space || e.evt.button !== 0) return;
+                          e.cancelBubble = true;
+                          select({ kind: 'wire', a: a.id, b: b.id });
+                        }}
+                        onDblClick={(e) => {
                           if (tool !== 'select') return;
                           e.cancelBubble = true;
                           select({ kind: 'items', ids: list.map((i) => i.id) });
                         }}
                       />
-                      {allSel && tool === 'select' && !drag && (
+                      {(allSel || wSel) && tool === 'select' && !drag && (
                         <Circle
                           x={g.apex.x}
                           y={g.apex.y}
@@ -676,7 +696,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
       {tool === 'axis' && <div className="canvas-tip">Click two points along the party wall. Items are mirrored across this line.</div>}
       {tool === 'wire' && <div className="canvas-tip">{wireFrom ? `Click the next light to wire it to ${wireFrom.code}${wireFrom.circuit ? ' on ' + wireFrom.circuit : ''}. Esc to finish.` : 'Click a light to start a wire, then click the lights to join to it.'}</div>}
       {tool === 'crop' && <div className="canvas-tip">Drag a box around the part of the sheet to keep, e.g. just the dwelling. Esc cancels.</div>}
-      {tool === 'erase' && <div className="canvas-tip">Drag a box over anything on the drawing to white it out. Select it later to move, resize or delete it.</div>}
+      {tool === 'erase' && <div className="canvas-tip">Drag a box over anything on the drawing to white it out. Click a box to select it, then drag, resize or press Delete to restore what was under it.</div>}
       {tool === 'text' && <div className="canvas-tip">Click where the text should go, then type it in the panel on the right.</div>}
       {tool === 'place' && <div className="canvas-tip">Click to place. Esc or V to stop placing.</div>}
     </div>

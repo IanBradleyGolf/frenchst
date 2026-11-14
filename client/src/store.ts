@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Floor, Project, ProjectData, Tool } from './types';
 
-export type Selection = { kind: 'items'; ids: string[] } | { kind: 'room'; id: string } | { kind: 'erase'; id: string } | { kind: 'text'; id: string } | { kind: 'none' };
+export type Selection = { kind: 'items'; ids: string[] } | { kind: 'room'; id: string } | { kind: 'erase'; id: string } | { kind: 'text'; id: string } | { kind: 'wire'; a: string; b: string } | { kind: 'none' };
 export type SaveState = 'saved' | 'dirty' | 'saving' | 'error' | 'conflict';
 
 export interface View {
