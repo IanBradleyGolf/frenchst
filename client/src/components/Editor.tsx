@@ -4,6 +4,7 @@ import { useFloor, useStore } from '../store';
 import { exportExcel, exportPdf } from '../export';
 import { uid } from '../geometry';
 import { LeftPanel } from './LeftPanel';
+import { createRoom } from '../rooms';
 import { RightPanel, mirrorCopy } from './RightPanel';
 import { PlanCanvas, isTyping } from './PlanCanvas';
 import type { Tool } from '../types';
@@ -77,15 +78,7 @@ function useShortcuts() {
         return;
       }
       if (e.key === 'Enter' && st.tool === 'room' && st.draft.length >= 6 && floor) {
-        const id = uid();
-        const pts = st.draft;
-        st.mutate((d) => {
-          const f = d.floors.find((x) => x.id === floor.id)!;
-          f.rooms.push({ id, name: `Room ${f.rooms.length + 1}`, dwelling: d.dwellings[0] ?? 'Dwelling 1', points: pts });
-        });
-        st.setDraft([]);
-        st.setTool('select');
-        st.select({ kind: 'room', id });
+        createRoom(floor, st.draft);
         return;
       }
       if (!floor) return;

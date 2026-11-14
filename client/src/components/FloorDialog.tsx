@@ -5,7 +5,7 @@ import { uid } from '../geometry';
 import { useStore } from '../store';
 import type { PlanFile } from '../types';
 
-function Thumb({ planId, page, selected, onClick }: { planId: string; page: number; selected: boolean; onClick: () => void }) {
+export function Thumb({ planId, page, selected, onClick }: { planId: string; page: number; selected: boolean; onClick: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let live = true;

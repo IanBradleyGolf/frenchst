@@ -8,6 +8,7 @@ import { libraryMap, unknownComponent } from '../schedule';
 import { EXTENT } from '../symbols';
 import type { Floor, Item } from '../types';
 import { SymbolShape } from './SymbolShape';
+import { createRoom } from '../rooms';
 
 const RENDER_SCALE = 3;
 const DWELLING_COLORS = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed'];
@@ -20,7 +21,7 @@ export function dwellingColor(dwellings: string[], d: string) {
 export function PlanCanvas({ floor, showLabels, showRooms }: { floor: Floor; showLabels: boolean; showRooms: boolean }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
-  const [size, setSize] = useState({ w: 800, h: 600 });
+  const [size, setSize] = useState({ w: 0, h: 0 });
   const [bg, setBg] = useState<HTMLCanvasElement | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
@@ -146,14 +147,7 @@ export function PlanCanvas({ floor, showLabels, showRooms }: { floor: Floor; sho
     }
     if (pts.length >= 4 && distance(pts[0], pts[1], pts[pts.length - 2], pts[pts.length - 1]) < tol) pts.splice(-2);
     if (pts.length < 6) return;
-    const id = uid();
-    mutate((d) => {
-      const f = d.floors.find((x) => x.id === floor.id)!;
-      f.rooms.push({ id, name: `Room ${f.rooms.length + 1}`, dwelling: d.dwellings[0] ?? 'Dwelling 1', points: pts });
-    });
-    setDraft([]);
-    setTool('select');
-    select({ kind: 'room', id });
+    createRoom(floor, pts);
   }
 
   function onMouseDown(e: Konva.KonvaEventObject<MouseEvent>) {

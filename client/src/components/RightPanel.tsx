@@ -6,6 +6,7 @@ import { svgFor } from '../symbols';
 import { api } from '../api';
 import type { Floor, ProjectData, Revision } from '../types';
 import { dwellingColor } from './PlanCanvas';
+import { ImportDialog } from './ImportDialog';
 
 export function RightPanel({ showLabels, setShowLabels, showRooms, setShowRooms }: { showLabels: boolean; setShowLabels: (v: boolean) => void; showRooms: boolean; setShowRooms: (v: boolean) => void }) {
   const tab = useStore((s) => s.rightTab);
@@ -39,6 +40,7 @@ function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms 
   const draft = useStore((s) => s.draft);
   const { mutate, setTool, setDraft, select } = useStore.getState();
   const lib = useMemo(() => libraryMap(data), [data]);
+  const [importing, setImporting] = useState(false);
 
   if (tool === 'calibrate' && draft.length === 4) return <Calibrate floor={floor} pts={draft} done={() => { setDraft([]); setTool('select'); }} />;
 
@@ -109,6 +111,10 @@ function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms 
         {floor.axis && <button onClick={() => mutate((d) => delete d.floors.find((f) => f.id === floor.id)!.axis)}>Clear</button>}
       </div>
       <p className="muted small">The party wall line lets you lay out one dwelling, then mirror-copy items and rooms to the other.</p>
+      <hr />
+      <button onClick={() => setImporting(true)}>Import components from another PDF…</button>
+      <p className="muted small">Reads fitting labels (DL1, WL2, LL1…) and Switch device tags from LA Lounge or Switch drawings and places them on this floor.</p>
+      {importing && <ImportDialog floor={floor} onClose={() => setImporting(false)} />}
       <hr />
       <label htmlFor="sym-size">Symbol size</label>
       <input id="sym-size" type="range" min={1.5} max={10} step={0.5} value={data.symbolSize} onChange={(e) => mutate((d) => (d.symbolSize = Number(e.target.value)), 'symsize')} />

@@ -52,6 +52,8 @@ export const DEFAULT_LIBRARY: Component[] = [
   { code: 'WAP', name: 'Wi-Fi access point', category: 'Data, AV & security', symbol: 'wap', color: '#0284c7', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 165 },
   { code: 'CAM', name: 'CCTV camera', category: 'Data, AV & security', symbol: 'camera', color: '#075985', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 165 },
   { code: 'INT', name: 'Intercom / access point', category: 'Data, AV & security', symbol: 'intercom', color: '#0c4a6e', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 165 },
+  { code: 'PIR', name: 'Security motion detector (PIR)', category: 'Data, AV & security', symbol: 'sensor', color: '#be123c', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 120 },
+  { code: 'SIR', name: 'Alarm siren / screamer', category: 'Data, AV & security', symbol: 'speaker', color: '#be123c', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 120 },
   { code: 'SPK', name: 'In-ceiling speaker', category: 'Data, AV & security', symbol: 'speaker', color: '#164e63', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 120 },
 ];
 
