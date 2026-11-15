@@ -10,6 +10,7 @@ import { ImportDialog } from './ImportDialog';
 import { linkSelected, unlinkSelected, deleteWire } from '../circuits';
 import { deleteMark, updateText } from '../marks';
 import { compareComponents } from '../library';
+import { ClearFloor } from './ClearFloor';
 import { AllNotes, RoomNotes, openQuestions } from './RoomNotes';
 
 export function RightPanel({ showLabels, setShowLabels, showRooms, setShowRooms, showWires, setShowWires }: { showLabels: boolean; setShowLabels: (v: boolean) => void; showRooms: boolean; setShowRooms: (v: boolean) => void; showWires: boolean; setShowWires: (v: boolean) => void }) {
@@ -228,6 +229,9 @@ function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms,
       <button onClick={() => setImporting(true)}>Import components from another PDF…</button>
       <p className="muted small">Reads fitting labels (DL1, WL2, LL1…) and Switch device tags from LA Lounge or Switch drawings and places them on this floor.</p>
       {importing && <ImportDialog floor={floor} onClose={() => setImporting(false)} />}
+      <hr />
+      <ClearFloor floor={floor} />
+      <p className="muted small">Removes components and wiring (and optionally text, erased areas, walls and rooms) from this floor, ready to start again.</p>
       <hr />
       <label htmlFor="sym-size">Symbol size</label>
       <input id="sym-size" type="range" min={1.5} max={10} step={0.5} value={data.symbolSize} onChange={(e) => mutate((d) => (d.symbolSize = Number(e.target.value)), 'symsize')} />
