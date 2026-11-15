@@ -3,6 +3,7 @@ import { api } from './api';
 import { useStore } from './store';
 import { ProjectList } from './components/ProjectList';
 import { Editor } from './components/Editor';
+import { UpdateBanner } from './components/UpdateBanner';
 import { DEFAULT_LIBRARY } from './library';
 import type { ProjectData } from './types';
 
@@ -12,6 +13,15 @@ function readHash() {
 }
 
 export function App() {
+  return (
+    <>
+      <UpdateBanner />
+      <Main />
+    </>
+  );
+}
+
+function Main() {
   const [projectId, setProjectId] = useState<string | null>(readHash());
   const project = useStore((s) => s.project);
   const [error, setError] = useState<string | null>(null);
