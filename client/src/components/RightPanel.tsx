@@ -75,6 +75,26 @@ function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms,
     }
   }
 
+  if (selection.kind === 'wall' && floor.walls?.some((w) => w.id === selection.id)) {
+    const w = floor.walls.find((x) => x.id === selection.id)!;
+    const mpp = floor.mmPerPt || 35.28;
+    const len = Math.hypot(w.x2 - w.x1, w.y2 - w.y1) * mpp;
+    return (
+      <div className="pad stack">
+        <h4>Wall</h4>
+        <div className="row gap wrap">
+          <label htmlFor="wall-t" className="small" style={{ margin: 0 }}>Thickness (mm)</label>
+          <input id="wall-t" type="number" min={10} step={10} style={{ width: 80 }} value={w.t} onChange={(e) => { const v = Math.max(10, Number(e.target.value) || 90); mutate((d) => (d.floors.find((f) => f.id === floor.id)!.walls!.find((x) => x.id === w.id)!.t = v), 'wallt-' + w.id); }} />
+          {[90, 110, 150, 200].map((t) => <button key={t} className="mini" onClick={() => mutate((d) => (d.floors.find((f) => f.id === floor.id)!.walls!.find((x) => x.id === w.id)!.t = t))}>{t}</button>)}
+        </div>
+        <p className="muted small">Length {(len / 1000).toFixed(2)} m{floor.mmPerPt ? '' : ' (scale not set — assuming 1:100)'}. Drag the square ends to adjust (snaps straight; Shift for free).</p>
+        <div className="row gap wrap">
+          <button className="danger" onClick={() => { mutate((d) => { const f = d.floors.find((x) => x.id === floor.id)!; f.walls = (f.walls ?? []).filter((x) => x.id !== w.id); }); select({ kind: 'none' }); }}>Delete wall</button>
+        </div>
+      </div>
+    );
+  }
+
   if (selection.kind === 'erase' && floor.erase?.some((r) => r.id === selection.id)) {
     const r = floor.erase.find((x) => x.id === selection.id)!;
     return (

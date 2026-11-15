@@ -160,6 +160,7 @@ export async function exportPdf(project: Project, opts: { labels: boolean; rooms
     const s = (Math.abs(sx - 1) < 0.01 && Math.abs(sy - 1) < 0.01) ? 1 : Math.min(sx, sy);
 
     for (const r of floor.erase ?? []) page.drawRectangle({ x: r.x * s, y: H - (r.y + r.h) * s, width: r.w * s, height: r.h * s, color: rgb(1, 1, 1) });
+    for (const w of floor.walls ?? []) page.drawLine({ start: { x: w.x1 * s, y: H - w.y1 * s }, end: { x: w.x2 * s, y: H - w.y2 * s }, thickness: Math.max(0.5, (w.t / (floor.mmPerPt || 35.28)) * s), color: rgb(0.2, 0.25, 0.33), lineCap: 2 as any });
 
     if (opts.rooms) {
       for (const r of floor.rooms) {

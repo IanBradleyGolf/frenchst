@@ -107,6 +107,15 @@ export interface EraseRect {
   h: number;
 }
 
+export interface Wall {
+  id: string;
+  x1: number; // page points
+  y1: number;
+  x2: number;
+  y2: number;
+  t: number; // thickness, mm
+}
+
 export interface TextNote {
   id: string;
   x: number; // top-left, page points
@@ -133,6 +142,7 @@ export interface Floor {
   items: Item[];
   erase?: EraseRect[]; // white-outs over the plan drawing
   texts?: TextNote[];
+  walls?: Wall[]; // walls drawn over the plan
   links?: [string, string][]; // explicit wires between item ids (circuits.ts)
   bends?: Record<string, number>; // wire arc per linked pair (key from circuits.bendKey)
 }
@@ -177,4 +187,4 @@ export interface Revision {
   createdBy: string | null;
 }
 
-export type Tool = 'select' | 'pan' | 'place' | 'room' | 'calibrate' | 'axis' | 'crop' | 'wire' | 'erase' | 'text';
+export type Tool = 'select' | 'pan' | 'place' | 'room' | 'calibrate' | 'axis' | 'crop' | 'wire' | 'erase' | 'text' | 'wall';

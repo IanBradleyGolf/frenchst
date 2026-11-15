@@ -19,6 +19,7 @@ export function duplicateFloor(floorId: string) {
     for (const r of src.rooms) r.id = uid();
     for (const r of src.erase ?? []) r.id = uid();
     for (const t of src.texts ?? []) t.id = uid();
+    for (const w of src.walls ?? []) w.id = uid();
     if (src.links) src.links = src.links.filter(([a, b]) => ids.has(a) && ids.has(b)).map(([a, b]) => [ids.get(a)!, ids.get(b)!]);
     if (src.bends) {
       const out: Record<string, number> = {};

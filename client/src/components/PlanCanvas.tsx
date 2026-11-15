@@ -28,6 +28,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
   const [rotPrev, setRotPrev] = useState<{ delta: number } | null>(null);
   const [bendPrev, setBendPrev] = useState<{ key: string; bend: number } | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
+  const [wallPrev, setWallPrev] = useState<{ id: string; end: 1 | 2; x: number; y: number } | null>(null);
   const [lenPrev, setLenPrev] = useState<{ id: string; len: number; x: number; y: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
@@ -140,7 +141,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
 
   // Snap room vertices to existing room corners within 7 screen px.
   function snap(p: { x: number; y: number }) {
-    if (tool !== 'room') return p;
+    if (tool !== 'room' && tool !== 'wall') return p;
     const tol = 7 / v.zoom;
     let best = p;
     let bd = tol;
@@ -153,6 +154,14 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
         }
       }
     }
+    for (const w of floor.walls ?? [])
+      for (const [x, y] of [[w.x1, w.y1], [w.x2, w.y2]]) {
+        const d = distance(p.x, p.y, x, y);
+        if (d < bd) {
+          bd = d;
+          best = { x, y };
+        }
+      }
     // Snap to horizontal/vertical from the previous draft point
     if (best === p && draft.length >= 2) {
       const lx = draft[draft.length - 2], ly = draft[draft.length - 1];
@@ -207,6 +216,21 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
       setDraft([...draft, q.x, q.y]);
       return;
     }
+    if (tool === 'wall') {
+      const q = e.evt.shiftKey ? p : snap(p);
+      if (draft.length >= 2) {
+        const [x1, y1] = draft;
+        if (distance(x1, y1, q.x, q.y) > 2 / v.zoom) {
+          const w = { id: uid(), x1, y1, x2: q.x, y2: q.y, t: floor.walls?.length ? floor.walls[floor.walls.length - 1].t : 90 };
+          mutate((d) => {
+            const f = d.floors.find((x) => x.id === floor.id)!;
+            f.walls = [...(f.walls ?? []), w];
+          });
+        }
+      }
+      setDraft([q.x, q.y]);
+      return;
+    }
     if (tool === 'calibrate' || tool === 'axis') {
       const next = draft.length >= 4 ? [p.x, p.y] : [...draft, p.x, p.y];
       setDraft(next);
@@ -243,7 +267,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
       return;
     }
     const p = toPage(sp.x, sp.y);
-    setCursor(tool === 'room' ? snap(p) : p);
+    setCursor(tool === 'room' || tool === 'wall' ? snap(p) : p);
     if (marquee) setMarquee({ ...marquee, x2: p.x, y2: p.y });
   }
 
@@ -400,6 +424,60 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                           mutate((d) => Object.assign(d.floors.find((f) => f.id === floor.id)!.erase!.find((q) => q.id === r.id)!, nr));
                         }}
                       />
+                    );
+                  })}
+                  {(floor.walls ?? []).map((w) => {
+                    const sel = selection.kind === 'wall' && selection.id === w.id;
+                    const mpp = floor.mmPerPt || DEFAULT_MM_PER_PT;
+                    const pv = wallPrev && wallPrev.id === w.id ? wallPrev : null;
+                    const x1 = pv && pv.end === 1 ? pv.x : w.x1, y1 = pv && pv.end === 1 ? pv.y : w.y1;
+                    const x2 = pv && pv.end === 2 ? pv.x : w.x2, y2 = pv && pv.end === 2 ? pv.y : w.y2;
+                    return (
+                      <Group key={w.id}>
+                        <Line
+                          points={[x1, y1, x2, y2]}
+                          stroke={sel ? '#f97316' : '#334155'}
+                          strokeWidth={Math.max(w.t / mpp, 1 / v.zoom)}
+                          lineCap="square"
+                          hitStrokeWidth={Math.max(w.t / mpp, 8 / v.zoom)}
+                          listening={tool === 'select'}
+                          onMouseDown={(e) => {
+                            if (tool !== 'select' || space || e.evt.button !== 0) return;
+                            e.cancelBubble = true;
+                            select({ kind: 'wall', id: w.id });
+                          }}
+                        />
+                        {sel && tool === 'select' &&
+                          ([[1, x1, y1], [2, x2, y2]] as const).map(([end, hx, hy]) => (
+                            <Rect
+                              key={end}
+                              x={hx - 4 / v.zoom}
+                              y={hy - 4 / v.zoom}
+                              width={8 / v.zoom}
+                              height={8 / v.zoom}
+                              fill="#fff"
+                              stroke="#f97316"
+                              strokeWidth={2 / v.zoom}
+                              draggable
+                              onMouseDown={(e) => (e.cancelBubble = true)}
+                              onDragMove={(e) => {
+                                let nx = e.target.x() + 4 / v.zoom, ny = e.target.y() + 4 / v.zoom;
+                                const ox = end === 1 ? w.x2 : w.x1, oy = end === 1 ? w.y2 : w.y1;
+                                if (!e.evt.shiftKey) { if (Math.abs(nx - ox) < 7 / v.zoom) nx = ox; else if (Math.abs(ny - oy) < 7 / v.zoom) ny = oy; }
+                                setWallPrev({ id: w.id, end, x: nx, y: ny });
+                              }}
+                              onDragEnd={() => {
+                                const pv2 = wallPrev;
+                                setWallPrev(null);
+                                if (!pv2) return;
+                                mutate((d) => {
+                                  const x = d.floors.find((f) => f.id === floor.id)!.walls!.find((q) => q.id === w.id)!;
+                                  if (pv2.end === 1) { x.x1 = pv2.x; x.y1 = pv2.y; } else { x.x2 = pv2.x; x.y2 = pv2.y; }
+                                });
+                              }}
+                            />
+                          ))}
+                      </Group>
                     );
                   })}
                 </Group>
@@ -798,6 +876,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
       {tool === 'axis' && <div className="canvas-tip">Click two points along the party wall. Items are mirrored across this line.</div>}
       {tool === 'wire' && <div className="canvas-tip">{wireFrom ? `Click the next light to wire it to ${wireFrom.code}${wireFrom.circuit ? ' on ' + wireFrom.circuit : ''}. Esc to finish.` : 'Click a light to start a wire, then click the lights to join to it.'}</div>}
       {tool === 'crop' && <div className="canvas-tip">Drag a box around the part of the sheet to keep, e.g. just the dwelling. Esc cancels.</div>}
+      {tool === 'wall' && <div className="canvas-tip">{draft.length ? 'Click to end this wall and start the next. Snaps straight and to wall ends (Shift: free). Esc to finish.' : 'Click where the wall starts.'}</div>}
       {tool === 'erase' && <div className="canvas-tip">Drag a box over anything on the drawing to white it out. Click a box to select it, then drag, resize or press Delete to restore what was under it.</div>}
       {tool === 'text' && <div className="canvas-tip">Click where the text should go, then type it in the panel on the right.</div>}
       {tool === 'place' && <div className="canvas-tip">Click to place. Esc or V to stop placing.</div>}
