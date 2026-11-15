@@ -11,6 +11,7 @@ import { SymbolShape } from './SymbolShape';
 import { createRoom } from '../rooms';
 import { isVisible } from '../layers';
 import { addText } from '../marks';
+import { DEFAULT_MM_PER_PT, halfUnits } from '../symbols';
 import { bendFor, circuitColor, circuitLinks, circuitsOf, wireGeom, wireTogether } from '../circuits';
 
 const RENDER_SCALE = 3;
@@ -25,6 +26,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
   const [wireFrom, setWireFrom] = useState<Item | null>(null);
   const [rotPrev, setRotPrev] = useState<{ delta: number } | null>(null);
   const [bendPrev, setBendPrev] = useState<{ key: string; bend: number } | null>(null);
+  const [lenPrev, setLenPrev] = useState<{ id: string; len: number; x: number; y: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -191,7 +193,8 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
     if (e.evt.button !== 0) return;
     const p = toPage(sp.x, sp.y);
     if (tool === 'place' && activeCode) {
-      const item: Item = { id: uid(), code: activeCode, x: p.x, y: p.y, rot: 0 };
+      const comp = lib.get(activeCode);
+      const item: Item = { id: uid(), code: activeCode, x: p.x, y: p.y, rot: 0, ...(comp?.symbol === 'profile' ? { len: comp.defaultLen ?? 1200 } : {}) };
       mutate((d) => d.floors.find((x) => x.id === floor.id)!.items.push(item));
       select({ kind: 'items', ids: [item.id] });
       return;
@@ -538,12 +541,14 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
               const c = lib.get(it.code) ?? unknownComponent(it.code);
               const sel = selectedIds.has(it.id);
               const off = drag && sel && drag.id !== it.id ? drag : null;
-              const ext = (EXTENT[c.symbol] ?? 1) * sz;
+              const half = c.symbol === 'profile' ? halfUnits((lenPrev && lenPrev.id === it.id ? lenPrev.len : it.len) ?? c.defaultLen ?? 1200, floor.mmPerPt, sz) : undefined;
+              const ext = half ? half * sz : (EXTENT[c.symbol] ?? 1) * sz;
+              const lenTxt = half ? ` ${(((lenPrev && lenPrev.id === it.id ? lenPrev.len : it.len) ?? c.defaultLen ?? 1200) / 1000).toFixed(1)}m` : '';
               return (
                 <Group
                   key={it.id}
-                  x={it.x + (off?.dx ?? 0)}
-                  y={it.y + (off?.dy ?? 0)}
+                  x={lenPrev && lenPrev.id === it.id ? lenPrev.x : it.x + (off?.dx ?? 0)}
+                  y={lenPrev && lenPrev.id === it.id ? lenPrev.y : it.y + (off?.dy ?? 0)}
                   draggable={tool === 'select' && !space}
                   onMouseDown={(e) => itemDown(e, it)}
                   onDragStart={() => setDrag({ id: it.id, dx: 0, dy: 0 })}
@@ -553,20 +558,66 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                   <Group rotation={sel && rotPrev ? it.rot + rotPrev.delta : it.rot}>
                     <Rect x={-ext - 1} y={-sz - 1} width={(ext + 1) * 2} height={(sz + 1) * 2} fill="transparent" />
                     {sel && <Rect x={-ext - 1.5} y={-sz - 1.5} width={(ext + 1.5) * 2} height={(sz + 1.5) * 2} stroke="#f97316" strokeWidth={1.2 / v.zoom} dash={[3 / v.zoom, 2 / v.zoom]} />}
-                    <SymbolShape kind={c.symbol} color={c.color} size={sz} />
+                    <SymbolShape kind={c.symbol} color={c.color} size={sz} half={half} />
                   </Group>
                   {showLabels && (
-                    <Text x={ext + 1} y={-sz * 0.9} text={it.circuit ? `${it.code}·${it.circuit}` : it.code} fontSize={sz * 0.95} fontFamily="IBM Plex Mono" fontStyle="500" fill={c.color} listening={false} />
+                    <Text x={half ? -ext : ext + 1} y={half ? -sz * 1.6 : -sz * 0.9} text={(it.circuit ? `${it.code}·${it.circuit}` : it.code) + lenTxt} fontSize={sz * 0.95} fontFamily="IBM Plex Mono" fontStyle="500" fill={c.color} listening={false} />
                   )}
                 </Group>
               );
             })}
 
+            {tool === 'select' && selection.kind === 'items' && selection.ids.length === 1 && !rotPrev && (() => {
+              const it = shown.find((i) => i.id === selection.ids[0]);
+              const c = it && lib.get(it.code);
+              if (!it || !c || c.symbol !== 'profile') return null;
+              const mpp = floor.mmPerPt || DEFAULT_MM_PER_PT;
+              const len = it.len ?? c.defaultLen ?? 1200;
+              const th = (it.rot * Math.PI) / 180, ux = Math.cos(th), uy = Math.sin(th);
+              const cur = lenPrev && lenPrev.id === it.id ? lenPrev : { len, x: it.x, y: it.y };
+              const halfPt = cur.len / mpp / 2;
+              const ends = [-1, 1].map((sgn) => ({ sgn, x: cur.x + ux * halfPt * sgn, y: cur.y + uy * halfPt * sgn }));
+              const fixedEnd = (sgn: number) => ({ x: it.x - ux * (len / mpp / 2) * sgn, y: it.y - uy * (len / mpp / 2) * sgn });
+              const calc = (sgn: number, px: number, py: number, free: boolean) => {
+                const f = fixedEnd(sgn);
+                let l = ((px - f.x) * ux + (py - f.y) * uy) * sgn * mpp; // mm along the axis
+                l = Math.max(100, free ? l : Math.round(l / 100) * 100);
+                const h = l / mpp / 2;
+                return { id: it.id, len: l, x: f.x + ux * h * sgn, y: f.y + uy * h * sgn };
+              };
+              return ends.map((e) => (
+                <Rect
+                  key={e.sgn}
+                  x={e.x - 4 / v.zoom}
+                  y={e.y - 4 / v.zoom}
+                  width={8 / v.zoom}
+                  height={8 / v.zoom}
+                  fill="#fff"
+                  stroke="#f97316"
+                  strokeWidth={2 / v.zoom}
+                  draggable
+                  onMouseDown={(ev) => (ev.cancelBubble = true)}
+                  onMouseEnter={(ev) => (ev.target.getStage()!.container().style.cursor = 'ew-resize')}
+                  onMouseLeave={(ev) => (ev.target.getStage()!.container().style.cursor = '')}
+                  onDragMove={(ev) => setLenPrev(calc(e.sgn, ev.target.x() + 4 / v.zoom, ev.target.y() + 4 / v.zoom, ev.evt.shiftKey))}
+                  onDragEnd={(ev) => {
+                    const r = calc(e.sgn, ev.target.x() + 4 / v.zoom, ev.target.y() + 4 / v.zoom, ev.evt.shiftKey);
+                    setLenPrev(null);
+                    mutate((d) => {
+                      const x = d.floors.find((f) => f.id === floor.id)!.items.find((q) => q.id === it.id)!;
+                      x.len = Math.round(r.len);
+                      x.x = r.x;
+                      x.y = r.y;
+                    });
+                  }}
+                />
+              ));
+            })()}
             {tool === 'select' && selection.kind === 'items' && (() => {
               const anchor = shown.find((i) => i.id === selection.ids[selection.ids.length - 1]);
               if (!anchor) return null;
               const c = lib.get(anchor.code) ?? unknownComponent(anchor.code);
-              const r = Math.max((EXTENT[c.symbol] ?? 1) * sz, sz) + 14 / v.zoom;
+              const r = (c.symbol === 'profile' ? sz : Math.max((EXTENT[c.symbol] ?? 1) * sz, sz)) + 14 / v.zoom;
               const ang = ((anchor.rot + (rotPrev?.delta ?? 0) - 90) * Math.PI) / 180;
               const hx = anchor.x + Math.cos(ang) * r, hy = anchor.y + Math.sin(ang) * r;
               return (
@@ -658,7 +709,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
             />
             {ghost && cursor && (
               <Group x={cursor.x} y={cursor.y} opacity={0.55} listening={false}>
-                <SymbolShape kind={ghost.symbol} color={ghost.color} size={sz} />
+                <SymbolShape kind={ghost.symbol} color={ghost.color} size={sz} half={ghost.symbol === 'profile' ? halfUnits(ghost.defaultLen ?? 1200, floor.mmPerPt, sz) : undefined} />
               </Group>
             )}
 

@@ -1,11 +1,11 @@
 import { Circle, Line, Rect, Text } from 'react-konva';
-import { SYMBOLS } from '../symbols';
+import { primsFor } from '../symbols';
 import type { SymbolKind } from '../types';
 
-export function SymbolShape({ kind, color, size }: { kind: SymbolKind; color: string; size: number }) {
+export function SymbolShape({ kind, color, size, half }: { kind: SymbolKind; color: string; size: number; half?: number }) {
   return (
     <>
-      {SYMBOLS[kind].map((p, i) => {
+      {primsFor(kind, half).map((p, i) => {
         switch (p.t) {
           case 'circle':
             return p.fill ? (

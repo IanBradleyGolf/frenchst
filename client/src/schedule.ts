@@ -9,6 +9,7 @@ export interface Placed {
   room: string; // room name or "(no room)"
   dwelling: string; // room dwelling or "(unassigned)"
   circuit: string;
+  len?: number; // mm
 }
 
 export const NO_ROOM = '(no room)';
@@ -20,7 +21,7 @@ export function placedItems(data: ProjectData, floors: Floor[] = data.floors): P
     for (const it of f.items) {
       if (!isVisible(data, it)) continue;
       const r = roomAt(f, it.x, it.y);
-      out.push({ floor: f, itemId: it.id, code: it.code, room: r?.name ?? NO_ROOM, dwelling: r?.dwelling ?? NO_DWELLING, circuit: it.circuit ?? '' });
+      out.push({ floor: f, itemId: it.id, code: it.code, room: r?.name ?? NO_ROOM, dwelling: r?.dwelling ?? NO_DWELLING, circuit: it.circuit ?? '', len: it.len });
     }
   }
   return out;
@@ -45,11 +46,17 @@ export function unknownComponent(code: string): Component {
 export function totals(data: ProjectData, items: Placed[]): Line[] {
   const lib = libraryMap(data);
   const counts = new Map<string, number>();
-  for (const p of items) counts.set(p.code, (counts.get(p.code) ?? 0) + 1);
+  for (const p of items) {
+    const c = lib.get(p.code);
+    // Length-drawn components are counted in metres.
+    const q = c?.symbol === 'profile' ? (p.len ?? c.defaultLen ?? 1200) / 1000 : 1;
+    counts.set(p.code, (counts.get(p.code) ?? 0) + q);
+  }
   const order = new Map(data.library.map((c, i) => [c.code, i]));
   return [...counts.entries()]
-    .map(([code, qty]) => {
+    .map(([code, raw]) => {
       const c = lib.get(code) ?? unknownComponent(code);
+      const qty = Math.round(raw * 100) / 100;
       const supply = qty * c.supplyRate;
       const install = qty * c.installRate;
       return { component: c, qty, supply, install, total: supply + install };

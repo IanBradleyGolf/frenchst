@@ -1,6 +1,8 @@
 export type SymbolKind =
   | 'downlight'
   | 'alarm'
+  | 'profile'
+  | 'driver'
   | 'rack'
   | 'access'
   | 'strike'
@@ -49,7 +51,8 @@ export interface Component {
   control: Control;
   supplier: string;
   supplyRate: number; // $ ex GST per unit
-  installRate: number; // $ ex GST per unit
+  installRate: number; // $ ex GST per unit (per metre for symbol 'profile')
+  defaultLen?: number; // mm, for components drawn to length
   notes?: string;
 }
 
@@ -67,6 +70,7 @@ export interface Item {
   y: number;
   rot: number; // degrees
   circuit?: string;
+  len?: number; // mm, for components drawn to length (symbol 'profile')
   layer?: string; // where it came from, e.g. "LA Lounge lighting"; undefined = drawn by hand
   note?: string;
 }

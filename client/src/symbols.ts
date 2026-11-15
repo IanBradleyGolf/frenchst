@@ -46,6 +46,8 @@ export const SYMBOLS: Record<SymbolKind, Prim[]> = {
   smoke: [ring(), label('S', 1)],
   circuit: [{ t: 'poly', pts: [0, -1, 1, 0, 0, 1, -1, 0], closed: true, w: 0.18 }, label('C', 0.8)],
   rack: [{ t: 'rect', x: -1.1, y: -1.1, w: 2.2, h: 2.2, sw: 0.22 }, { t: 'rect', x: -0.8, y: -0.8, w: 1.6, h: 1.6, sw: 0.1 }, label('RACK', 0.45)],
+  profile: [{ t: 'rect', x: -1.8, y: -0.28, w: 3.6, h: 0.56, sw: 0.14 }, { t: 'rect', x: -1.65, y: -0.12, w: 3.3, h: 0.24, fill: true }],
+  driver: [{ t: 'rect', x: -1, y: -0.7, w: 2, h: 1.4, sw: 0.18 }, label('DRV', 0.55)],
   alarm: [{ t: 'rect', x: -1, y: -1, w: 2, h: 2, sw: 0.18 }, label('AK', 0.75)],
   access: [{ t: 'rect', x: -1, y: -1, w: 2, h: 2, sw: 0.18 }, label('AC', 0.75)],
   strike: [{ t: 'rect', x: -1, y: -1, w: 2, h: 2, sw: 0.18 }, label('ES', 0.75)],
@@ -56,7 +58,7 @@ export const SYMBOLS: Record<SymbolKind, Prim[]> = {
 };
 
 /** Approximate half-extent of a symbol in unit coordinates, for hit areas and labels. */
-export const EXTENT: Partial<Record<SymbolKind, number>> = { linear: 1.6, strip: 1.8, spot: 1.4, adjustable: 1.2, camera: 1.2, touchscreen: 1.1, tv: 1.1, soundbar: 1.4, rack: 1.1 };
+export const EXTENT: Partial<Record<SymbolKind, number>> = { linear: 1.6, strip: 1.8, spot: 1.4, adjustable: 1.2, camera: 1.2, touchscreen: 1.1, tv: 1.1, soundbar: 1.4, rack: 1.1, profile: 1.8 };
 
 export function svgFor(kind: SymbolKind, color: string, size = 22): string {
   const s = size / 2 / 1.9;
@@ -83,4 +85,21 @@ export function svgFor(kind: SymbolKind, color: string, size = 22): string {
     }
   });
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${-size / 2 / s} ${-size / 2 / s} ${size / s} ${size / s}">${parts.join('')}</svg>`;
+}
+
+/** Fallback when a floor has no scale: assume a 1:100 drawing (1 pt = 0.3528 mm on paper). */
+export const DEFAULT_MM_PER_PT = 35.28;
+
+/** Half-length, in symbol units (multiples of the symbol size), of a length-drawn item. */
+export function halfUnits(lenMm: number, mmPerPt: number | undefined, size: number) {
+  return lenMm / (mmPerPt || DEFAULT_MM_PER_PT) / 2 / size;
+}
+
+/** Primitives for a symbol; a 'profile' is stretched to the given half-length (symbol units). */
+export function primsFor(kind: SymbolKind, half?: number): Prim[] {
+  if (kind !== 'profile' || !half) return SYMBOLS[kind];
+  return [
+    { t: 'rect', x: -half, y: -0.28, w: half * 2, h: 0.56, sw: 0.14 },
+    { t: 'rect', x: -half + 0.15, y: -0.12, w: Math.max(0.1, half * 2 - 0.3), h: 0.24, fill: true },
+  ];
 }

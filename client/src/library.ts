@@ -37,6 +37,10 @@ export const DEFAULT_LIBRARY: Component[] = [
   { code: 'KP', name: 'Lighting keypad', category: 'Control', symbol: 'keypad', color: '#9333ea', control: 'Control device', supplier: A, supplyRate: 467, installRate: 120 },
   { code: 'MS', name: 'Ceiling motion sensor', category: 'Control', symbol: 'sensor', color: '#a855f7', control: 'Control device', supplier: A, supplyRate: 280, installRate: 120 },
   { code: 'TS', name: 'Touchscreen', category: 'Control', symbol: 'touchscreen', color: '#7e22ce', control: 'Control device', supplier: A, supplyRate: 0, installRate: 150 },
+  // Linear & battens
+  { code: 'LIN1', name: 'Surface linear LED profile, white, 4000K high output (per metre)', category: 'Linear & battens', symbol: 'profile', color: '#0891b2', control: 'On/off', supplier: E, supplyRate: 0, installRate: 0, defaultLen: 4500, notes: 'Surface-mounted aluminium profile with opal diffuser. On/off driver in an accessible location; switched by a relay channel and occupancy sensor. Rates are per metre.' },
+  { code: 'DRV', name: 'LED driver 24V DC, on/off (accessible location)', category: 'Linear & battens', symbol: 'driver', color: '#0e7490', control: 'On/off', supplier: E, supplyRate: 0, installRate: 0, notes: 'One per profile run, or one shared driver sized for all runs. Must stay accessible (hatch, cupboard or wall box).' },
+  { code: 'BAT', name: 'Slim LED batten 1200mm, 4000K', category: 'Linear & battens', symbol: 'linear', color: '#155e75', control: 'On/off', supplier: E, supplyRate: 0, installRate: 0 },
   // Power
   { code: 'GPO', name: 'Double power point', category: 'Power', symbol: 'gpo', color: '#b91c1c', control: 'Power', supplier: E, supplyRate: 0, installRate: 165 },
   { code: 'GPO-S', name: 'Single power point', category: 'Power', symbol: 'gpo', color: '#dc2626', control: 'Power', supplier: E, supplyRate: 0, installRate: 150 },
@@ -66,7 +70,7 @@ export const DEFAULT_LIBRARY: Component[] = [
 
 export const SYMBOL_KINDS: Component['symbol'][] = [
   'downlight', 'pinlight', 'adjustable', 'wall', 'pendant', 'linear', 'strip', 'lowlevel', 'uplight', 'spike', 'spot', 'panel', 'surface', 'fan',
-  'keypad', 'sensor', 'rack', 'alarm', 'access', 'strike', 'doorctl', 'soundbar', 'sub', 'touchscreen', 'gpo', 'usb', 'gpo-wp', 'data', 'tv', 'wap', 'camera', 'intercom', 'speaker', 'exhaust', 'towel', 'smoke', 'circuit', 'generic',
+  'keypad', 'sensor', 'profile', 'driver', 'rack', 'alarm', 'access', 'strike', 'doorctl', 'soundbar', 'sub', 'touchscreen', 'gpo', 'usb', 'gpo-wp', 'data', 'tv', 'wap', 'camera', 'intercom', 'speaker', 'exhaust', 'towel', 'smoke', 'circuit', 'generic',
 ];
 
 export const CONTROLS: Component['control'][] = ['DALI', 'DALI relay', 'Phase dim', 'On/off', 'Control device', 'Power', 'Low voltage', 'Other'];

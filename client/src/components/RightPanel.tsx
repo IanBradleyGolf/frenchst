@@ -138,6 +138,19 @@ function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms,
         <input id="pp-cct" placeholder={circuits.length > 1 ? '(mixed)' : 'e.g. K1-2 or C04'} value={circuits.length === 1 ? circuits[0] : ''} onChange={(e) => updateSel((it) => (it.circuit = e.target.value || undefined), 'circuit')} />
         <label htmlFor="pp-note">Note</label>
         <textarea id="pp-note" rows={2} placeholder={notes.length > 1 ? '(mixed)' : ''} value={notes.length === 1 ? notes[0] : ''} onChange={(e) => updateSel((it) => (it.note = e.target.value || undefined), 'note')} />
+        {items.every((i) => lib.get(i.code)?.symbol === 'profile') && (() => {
+          const lens = new Set(items.map((i) => i.len ?? lib.get(i.code)?.defaultLen ?? 1200));
+          return (
+            <>
+              <div className="row gap wrap">
+                <label htmlFor="pp-len" className="small" style={{ margin: 0 }}>Length (m)</label>
+                <input id="pp-len" type="number" step={0.1} min={0.1} style={{ width: 80 }} value={lens.size === 1 ? +([...lens][0] / 1000).toFixed(2) : ''} placeholder="mixed" onChange={(e) => { const v = Number(e.target.value); if (v > 0) updateSel((it) => (it.len = Math.round(v * 1000)), 'len'); }} />
+                <span className="muted small">Total {(items.reduce((a, i) => a + (i.len ?? lib.get(i.code)?.defaultLen ?? 1200), 0) / 1000).toFixed(1)} m</span>
+              </div>
+              <p className="muted small">Drag the square end handles to stretch (snaps to 100 mm; Shift for free).{floor.mmPerPt ? '' : ' Scale not set on this floor, so lengths are drawn assuming 1:100 — set the scale for true lengths.'}</p>
+            </>
+          );
+        })()}
         <div className="row gap wrap">
           <label htmlFor="pp-rot" className="small" style={{ margin: 0 }}>Rotation°</label>
           <input id="pp-rot" type="number" step={15} style={{ width: 70 }} value={new Set(items.map((i) => Math.round(i.rot))).size === 1 ? Math.round(items[0].rot) : ''} placeholder="mixed" onChange={(e) => { const v = Number(e.target.value); if (!Number.isNaN(v)) updateSel((it) => (it.rot = ((v % 360) + 360) % 360), 'rot'); }} />
