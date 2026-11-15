@@ -7,6 +7,7 @@ export interface Label {
   h: number; // text height in points
   len?: number; // mm, from a 'CODE|len|rot' label
   rot?: number; // degrees, from a 'CODE|len|rot' label
+  note?: string; // from a 'CODE|len|rot|note' label
 }
 
 const cache = new Map<string, Promise<Label[]>>();

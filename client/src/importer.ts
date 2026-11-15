@@ -29,6 +29,7 @@ export function similarity(a1: Pt, b1: Pt, a2: Pt, b2: Pt) {
  * - Plain fitting codes (DL1, WL2, LL1, GS1…) are their own key.
  * - Switch device tags like "205-WAP" become "WAP".
  * - Switch keypad tags like "204.A" become "KEYPAD", or "SENSOR" when a "CTS" label sits beside them.
+ * - Power point codes (GPO, GPO-S, GPO-WP, GPO-FL, USBC) are their own key.
  * - Circuit tags like "204.4.1" and other text are ignored.
  */
 export function classify(labels: Label[]): Map<string, Label[]> {
@@ -41,11 +42,11 @@ export function classify(labels: Label[]): Map<string, Label[]> {
   for (const l0 of labels) {
     let l = l0;
     let s = l.str;
-    // Spec labels may carry a length and rotation: "LIN1|4500|0", "001-DRV".
+    // Spec labels may carry a length, rotation and note: "LIN1|4500|0", "GPO||90|400mm", "001-DRV".
     if (s.includes('|')) {
-      const [code, len, rot] = s.split('|');
+      const [code, len, rot, ...note] = s.split('|');
       s = code.trim();
-      l = { ...l0, str: s, len: Number(len) || undefined, rot: rot !== undefined && rot !== '' ? Number(rot) : undefined };
+      l = { ...l0, str: s, len: Number(len) || undefined, rot: rot !== undefined && rot !== '' ? Number(rot) : undefined, note: note.join('|').trim() || undefined };
     }
     let m: RegExpMatchArray | null;
     if ((m = s.match(/^\d{3}-([A-Z][A-Z0-9]{1,5})$/))) add(m[1], l);
@@ -53,7 +54,7 @@ export function classify(labels: Label[]): Map<string, Label[]> {
       const near = cts.some((c) => Math.hypot(c.x - l.x, c.y - l.y) < Math.max(12, l.h * 6));
       add(near ? 'SENSOR' : 'KEYPAD', l);
     } else if (/^[A-Z]{1,4}\d{0,2}$/.test(s) && /\d/.test(s)) add(s, l); // DL1, LED2, GS1, UP1, P2…
-    else if (/^(LP|TV|WAP|PIR|EXF|HTR|GPO|USB|DATA|SPK|CAM)$/.test(s)) add(s, l);
+    else if (/^(LP|TV|WAP|PIR|EXF|HTR|GPO|GPO-S|GPO-WP|GPO-FL|USBC|USB|DATA|SPK|CAM)$/.test(s)) add(s, l);
   }
   return out;
 }

@@ -49,6 +49,7 @@ export const DEFAULT_LIBRARY: Component[] = [
   { code: 'GPO-S', name: 'Single power point', category: 'Power', symbol: 'gpo', color: '#dc2626', control: 'Power', supplier: E, supplyRate: 0, installRate: 150 },
   { code: 'USBC', name: 'Double power point with USB-C', category: 'Power', symbol: 'usb', color: '#b91c1c', control: 'Power', supplier: E, supplyRate: 0, installRate: 295 },
   { code: 'GPO-WP', name: 'Weatherproof double power point', category: 'Power', symbol: 'gpo-wp', color: '#7f1d1d', control: 'Power', supplier: E, supplyRate: 0, installRate: 210 },
+  { code: 'GPO-FL', name: 'Floor power point (double, in-floor box)', category: 'Power', symbol: 'gpo', color: '#c2410c', control: 'Power', supplier: E, supplyRate: 0, installRate: 0, notes: 'Recessed floor box with a double outlet, set into the slab/floor finish. Position to suit the furniture layout.' },
   { code: 'EXF', name: 'Exhaust fan (wiring)', category: 'Power', symbol: 'exhaust', color: '#57534e', control: 'On/off', supplier: E, supplyRate: 0, installRate: 165 },
   { code: 'HTR', name: 'Heated towel rail circuit', category: 'Power', symbol: 'towel', color: '#9a3412', control: 'On/off', supplier: E, supplyRate: 0, installRate: 180 },
   { code: 'CCT', name: 'Dedicated circuit (appliance, EV, pool…)', category: 'Power', symbol: 'circuit', color: '#991b1b', control: 'Power', supplier: E, supplyRate: 0, installRate: 400 },
