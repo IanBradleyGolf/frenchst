@@ -5,6 +5,8 @@ export interface Label {
   x: number; // centre, page points, y down (same space as the editor)
   y: number;
   h: number; // text height in points
+  len?: number; // mm, from a 'CODE|len|rot' label
+  rot?: number; // degrees, from a 'CODE|len|rot' label
 }
 
 const cache = new Map<string, Promise<Label[]>>();

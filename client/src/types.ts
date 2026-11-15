@@ -1,6 +1,7 @@
 export type SymbolKind =
   | 'downlight'
   | 'alarm'
+  | 'pushbutton'
   | 'profile'
   | 'driver'
   | 'rack'

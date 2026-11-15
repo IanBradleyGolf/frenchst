@@ -38,8 +38,15 @@ export function classify(labels: Label[]): Map<string, Label[]> {
     if (!out.has(k)) out.set(k, []);
     out.get(k)!.push(l);
   };
-  for (const l of labels) {
-    const s = l.str;
+  for (const l0 of labels) {
+    let l = l0;
+    let s = l.str;
+    // Spec labels may carry a length and rotation: "LIN1|4500|0", "001-DRV".
+    if (s.includes('|')) {
+      const [code, len, rot] = s.split('|');
+      s = code.trim();
+      l = { ...l0, str: s, len: Number(len) || undefined, rot: rot !== undefined && rot !== '' ? Number(rot) : undefined };
+    }
     let m: RegExpMatchArray | null;
     if ((m = s.match(/^\d{3}-([A-Z][A-Z0-9]{1,5})$/))) add(m[1], l);
     else if (/^\d{3}\.[A-Z]$/.test(s)) {

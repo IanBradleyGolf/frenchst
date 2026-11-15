@@ -73,14 +73,14 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
 
   // Labels to import, in source coordinates, before alignment.
   const chosen = useMemo(() => {
-    const out: { code: string; x: number; y: number; light: boolean }[] = [];
+    const out: { code: string; x: number; y: number; light: boolean; len?: number; rot?: number }[] = [];
     for (const [k, list] of groups) {
       const code = mapping[k];
       if (!code) continue;
-      const light = /^(DL\d|WL\d|P\d|LED\d|LL\d|UP\d|GS\d|SP\d|LP$)/.test(k);
+      const light = /^(DL\d|WL\d|P\d|LED\d|LL\d|UP\d|GS\d|SP\d|LIN\d|LP$|BAT$|DRV$)/.test(k);
       for (const l of list) {
         if (src && (l.x < 0 || l.y < 0 || l.x > src.width || l.y > src.height)) continue; // text outside the visible page
-        out.push({ code, x: l.x, y: l.y, light });
+        out.push({ code, x: l.x, y: l.y, light, len: l.len, rot: l.rot });
       }
     }
     return out;
@@ -98,12 +98,12 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
 
   const planned = useMemo(() => {
     if (!xf) return [];
-    const out: { i: number; code: string; x: number; y: number; color: string }[] = [];
+    const out: { i: number; code: string; x: number; y: number; color: string; len?: number; rot?: number }[] = [];
     chosen.forEach((c, i) => {
       const p = xf.apply(snap ? snap.pos[i] : c);
       if (p.x < 0 || p.y < 0 || p.x > floor.width || p.y > floor.height) return;
       if (area && (p.x < area.x1 || p.x > area.x2 || p.y < area.y1 || p.y > area.y2)) return;
-      out.push({ i, code: c.code, x: p.x, y: p.y, color: lib.get(c.code)?.color ?? '#64748b' });
+      out.push({ i, code: c.code, x: p.x, y: p.y, color: lib.get(c.code)?.color ?? '#64748b', len: c.len, rot: c.rot });
     });
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -129,7 +129,16 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
 
   function doImport() {
     const layerName = layer.trim() || defaultLayer;
-    const items: { id: string; code: string; x: number; y: number; rot: number; circuit?: string; layer?: string }[] = planned.map((p) => ({ id: uid(), code: p.code, x: p.x, y: p.y, rot: 0, layer: layerName }));
+    const turn = xf?.rotationDeg ?? 0;
+    const items: { id: string; code: string; x: number; y: number; rot: number; len?: number; circuit?: string; layer?: string }[] = planned.map((p) => ({
+      id: uid(),
+      code: p.code,
+      x: p.x,
+      y: p.y,
+      rot: p.rot !== undefined ? ((((p.rot + turn) % 360) + 360) % 360) : 0,
+      ...(p.len ? { len: p.len } : {}),
+      layer: layerName,
+    }));
     if (snap && snap.links.length) {
       const idx = new Map(planned.map((p, k) => [p.i, k]));
       const links = snap.links.map(([a, b]) => [idx.get(a), idx.get(b)]).filter(([a, b]) => a !== undefined && b !== undefined) as [number, number][];
