@@ -14,6 +14,7 @@ export const DEFAULT_LIBRARY: Component[] = [
   { code: 'DL5', name: 'Adjustable recessed art light (Bloom)', category: 'Downlights', symbol: 'adjustable', color: '#1e40af', control: 'DALI', supplier: L, supplyRate: 164, installRate: 135 },
   { code: 'DL6', name: 'Mini pin light (Eve)', category: 'Downlights', symbol: 'pinlight', color: '#3b82f6', control: 'DALI', supplier: L, supplyRate: 97, installRate: 135 },
   { code: 'DL7', name: 'IP-rated external downlight (Latto Extreme)', category: 'Downlights', symbol: 'downlight', color: '#92400e', control: 'DALI', supplier: L, supplyRate: 205, installRate: 135 },
+  { code: 'DL8', name: 'Basic IP-rated downlight, low-glare, 4000K, on/off', category: 'Downlights', symbol: 'downlight', color: '#1d4ed8', control: 'On/off', supplier: E, supplyRate: 0, installRate: 0, notes: 'Recessed LED (low glare), white trim. For utility spaces and the basement stair; switched with the garage circuit.' },
   // Wall, pendant, spot
   { code: 'WL1', name: 'Decorative wall light (type TBC)', category: 'Wall lights & pendants', symbol: 'wall', color: '#7c3aed', control: 'DALI relay', supplier: L, supplyRate: 0, installRate: 180 },
   { code: 'WL2', name: 'IP-rated up/down wall light (Titan Two)', category: 'Wall lights & pendants', symbol: 'wall', color: '#92400e', control: 'DALI relay', supplier: L, supplyRate: 328, installRate: 180 },
