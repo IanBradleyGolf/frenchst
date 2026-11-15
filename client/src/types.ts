@@ -4,6 +4,7 @@ export type SymbolKind =
   | 'pushbutton'
   | 'pirswitch'
   | 'occsensor'
+  | 'switch'
   | 'contact'
   | 'profile'
   | 'driver'

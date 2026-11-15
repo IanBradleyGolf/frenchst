@@ -15,6 +15,7 @@ export const DEFAULT_LIBRARY: Component[] = [
   { code: 'DL6', name: 'Mini pin light (Eve)', category: 'Downlights', symbol: 'pinlight', color: '#3b82f6', control: 'DALI', supplier: L, supplyRate: 97, installRate: 135 },
   { code: 'DL7', name: 'IP-rated external downlight (Latto Extreme)', category: 'Downlights', symbol: 'downlight', color: '#92400e', control: 'DALI', supplier: L, supplyRate: 205, installRate: 135 },
   { code: 'DL8', name: 'Basic IP-rated downlight, low-glare, 4000K, on/off', category: 'Downlights', symbol: 'downlight', color: '#1d4ed8', control: 'On/off', supplier: E, supplyRate: 0, installRate: 0, notes: 'Recessed LED (low glare), white trim. For utility spaces and the basement stair; switched with the garage circuit.' },
+  { code: 'DL9', name: 'IP65 downlight, low-glare, 3000K, on/off (wet areas)', category: 'Downlights', symbol: 'downlight', color: '#0e7490', control: 'On/off', supplier: E, supplyRate: 0, installRate: 0, notes: 'Recessed LED, IP65 so it can go over the shower or bath, low glare, warm 3000K, white trim. Not DALI.' },
   // Wall, pendant, spot
   { code: 'WL1', name: 'Decorative wall light (type TBC)', category: 'Wall lights & pendants', symbol: 'wall', color: '#7c3aed', control: 'DALI relay', supplier: L, supplyRate: 0, installRate: 180 },
   { code: 'WL2', name: 'IP-rated up/down wall light (Titan Two)', category: 'Wall lights & pendants', symbol: 'wall', color: '#92400e', control: 'DALI relay', supplier: L, supplyRate: 328, installRate: 180 },
@@ -35,6 +36,7 @@ export const DEFAULT_LIBRARY: Component[] = [
   { code: 'LP', name: 'LED panel light', category: 'Low-level & external', symbol: 'panel', color: '#475569', control: 'DALI', supplier: L, supplyRate: 184, installRate: 135 },
   { code: 'FAN', name: 'Ceiling fan (wiring)', category: 'Low-level & external', symbol: 'fan', color: '#334155', control: 'Phase dim', supplier: E, supplyRate: 0, installRate: 135 },
   // Control
+  { code: 'SWL', name: 'Light switch, on/off (same range as the house)', category: 'Control', symbol: 'switch', color: '#7c3aed', control: 'On/off', supplier: E, supplyRate: 0, installRate: 0, notes: 'Conventional 240V switch mechanism. Use 2 or 3 gang plates where several circuits share a spot (e.g. lights + exhaust fan).' },
   { code: 'KP', name: 'Lighting keypad', category: 'Control', symbol: 'keypad', color: '#9333ea', control: 'Control device', supplier: A, supplyRate: 467, installRate: 120 },
   { code: 'MS', name: 'Ceiling motion sensor', category: 'Control', symbol: 'sensor', color: '#a855f7', control: 'Control device', supplier: A, supplyRate: 280, installRate: 120 },
   { code: 'TS', name: 'Touchscreen (Control4 in-wall, whole-house control)', category: 'Control', symbol: 'touchscreen', color: '#7e22ce', control: 'Control device', supplier: A, supplyRate: 0, installRate: 150, notes: 'Control4 in-wall touchscreen: lights, scenes, music, TV, climate, blinds, cameras, intercom. Kitchen 11"; front door and garage lift entry smaller (8" or 10") - confirm model with Switch.' },
@@ -78,7 +80,7 @@ export const DEFAULT_LIBRARY: Component[] = [
 
 export const SYMBOL_KINDS: Component['symbol'][] = [
   'downlight', 'pinlight', 'adjustable', 'wall', 'pendant', 'linear', 'strip', 'lowlevel', 'uplight', 'spike', 'spot', 'panel', 'surface', 'fan',
-  'keypad', 'sensor', 'pushbutton', 'pirswitch', 'occsensor', 'contact', 'profile', 'driver', 'rack', 'alarm', 'access', 'strike', 'doorctl', 'soundbar', 'sub', 'touchscreen', 'gpo', 'usb', 'gpo-wp', 'data', 'tv', 'wap', 'camera', 'intercom', 'speaker', 'exhaust', 'towel', 'smoke', 'circuit', 'generic',
+  'keypad', 'sensor', 'pushbutton', 'pirswitch', 'occsensor', 'switch', 'contact', 'profile', 'driver', 'rack', 'alarm', 'access', 'strike', 'doorctl', 'soundbar', 'sub', 'touchscreen', 'gpo', 'usb', 'gpo-wp', 'data', 'tv', 'wap', 'camera', 'intercom', 'speaker', 'exhaust', 'towel', 'smoke', 'circuit', 'generic',
 ];
 
 export const CONTROLS: Component['control'][] = ['DALI', 'DALI relay', 'Phase dim', 'On/off', 'Control device', 'Power', 'Low voltage', 'Other'];
