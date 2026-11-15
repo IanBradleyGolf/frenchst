@@ -11,6 +11,7 @@ import { SymbolShape } from './SymbolShape';
 import { createRoom } from '../rooms';
 import { isVisible } from '../layers';
 import { addText } from '../marks';
+import { openQuestions } from './RoomNotes';
 import { DEFAULT_MM_PER_PT, halfUnits } from '../symbols';
 import { bendFor, circuitColor, circuitLinks, circuitsOf, wireGeom, wireTogether } from '../circuits';
 
@@ -410,8 +411,24 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                 const col = dwellingColor(data.dwellings, r.dwelling);
                 const c = centroid(r.points);
                 const sel = roomSel?.id === r.id;
+                const q = openQuestions(r);
+                const fs = Math.max(3, 10 / v.zoom);
                 return (
                   <Group key={r.id}>
+                    {q > 0 && (
+                      <Group
+                        x={c.x}
+                        y={c.y + fs * 1.3}
+                        onMouseDown={(e) => {
+                          if (tool !== 'select') return;
+                          e.cancelBubble = true;
+                          select({ kind: 'room', id: r.id });
+                        }}
+                      >
+                        <Rect x={-fs * 1.6} y={-fs * 0.1} width={fs * 3.2} height={fs * 1.25} cornerRadius={fs * 0.6} fill="#f97316" />
+                        <Text x={-fs * 1.6} y={fs * 0.08} width={fs * 3.2} align="center" text={`${q} ?`} fontSize={fs * 0.9} fontStyle="700" fill="#fff" fontFamily="IBM Plex Sans" />
+                      </Group>
+                    )}
                     <Line name="room" points={r.points} closed fill={col + (sel ? '30' : '14')} stroke={col} strokeWidth={(sel ? 2 : 1) / v.zoom} dash={sel ? undefined : [4 / v.zoom, 3 / v.zoom]} listening={false} />
                     <Text
                       x={c.x - 60}

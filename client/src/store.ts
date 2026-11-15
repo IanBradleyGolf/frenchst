@@ -26,7 +26,7 @@ interface State {
   draft: number[]; // in-progress points for room / calibrate / axis tools
   views: Record<string, View>;
   clipboard: { items: Floor['items'] } | null;
-  rightTab: 'properties' | 'schedule' | 'rooms' | 'revisions';
+  rightTab: 'properties' | 'schedule' | 'rooms' | 'notes' | 'revisions';
   fitNonce: number;
   requestFit(): void;
 

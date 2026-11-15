@@ -9,23 +9,26 @@ import { dwellingColor } from './PlanCanvas';
 import { ImportDialog } from './ImportDialog';
 import { linkSelected, unlinkSelected, deleteWire } from '../circuits';
 import { deleteMark, updateText } from '../marks';
+import { AllNotes, RoomNotes, openQuestions } from './RoomNotes';
 
 export function RightPanel({ showLabels, setShowLabels, showRooms, setShowRooms, showWires, setShowWires }: { showLabels: boolean; setShowLabels: (v: boolean) => void; showRooms: boolean; setShowRooms: (v: boolean) => void; showWires: boolean; setShowWires: (v: boolean) => void }) {
   const tab = useStore((s) => s.rightTab);
   const { setRightTab } = useStore.getState();
   const floor = useFloor();
+  const openCount = useStore((s) => (s.project?.data.floors ?? []).reduce((a, f) => a + f.rooms.reduce((b, r) => b + openQuestions(r), 0), 0));
   return (
     <aside className="right">
       <nav className="tabs" role="tablist">
-        {(['properties', 'rooms', 'schedule', 'revisions'] as const).map((t) => (
+        {(['properties', 'rooms', 'notes', 'schedule', 'revisions'] as const).map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'sel' : ''} onClick={() => setRightTab(t)}>
-            {t === 'properties' ? 'Properties' : t === 'rooms' ? 'Rooms' : t === 'schedule' ? 'Schedule' : 'Revisions'}
+            {t === 'properties' ? 'Properties' : t === 'rooms' ? 'Rooms' : t === 'notes' ? <>Notes{openCount ? <span className="tab-badge">{openCount}</span> : null}</> : t === 'schedule' ? 'Schedule' : 'Revisions'}
           </button>
         ))}
       </nav>
       <div className="tab-body">
         {tab === 'properties' && (floor ? <Properties floor={floor} showLabels={showLabels} setShowLabels={setShowLabels} showRooms={showRooms} setShowRooms={setShowRooms} showWires={showWires} setShowWires={setShowWires} /> : <p className="muted pad">Add a floor to begin.</p>)}
         {tab === 'rooms' && (floor ? <Rooms floor={floor} /> : <p className="muted pad">Add a floor to begin.</p>)}
+        {tab === 'notes' && <AllNotes />}
         {tab === 'schedule' && <Schedule />}
         {tab === 'revisions' && <Revisions />}
       </div>
@@ -302,11 +305,12 @@ function Rooms({ floor }: { floor: Floor }) {
               Delete room
             </button>
           </div>
+          <RoomNotes floor={floor} room={sel} />
         </div>
       )}
       <table className="tbl">
         <thead>
-          <tr><th>Room</th><th>Dwelling</th><th className="num">Items</th></tr>
+          <tr><th>Room</th><th>Dwelling</th><th className="num">Items</th><th className="num" title="Open questions">?</th></tr>
         </thead>
         <tbody>
           {[...floor.rooms].sort((a, b) => a.dwelling.localeCompare(b.dwelling) || a.name.localeCompare(b.name)).map((r) => (
@@ -314,9 +318,10 @@ function Rooms({ floor }: { floor: Floor }) {
               <td>{r.name}</td>
               <td><span className="dot" style={{ background: dwellingColor(data.dwellings, r.dwelling) }} />{r.dwelling}</td>
               <td className="num">{countIn(r.id)}</td>
+              <td className="num">{openQuestions(r) || ''}</td>
             </tr>
           ))}
-          {floor.rooms.length === 0 && <tr><td colSpan={3} className="muted">No rooms yet. Draw rooms so every item is counted against a room and dwelling.</td></tr>}
+          {floor.rooms.length === 0 && <tr><td colSpan={4} className="muted">No rooms yet. Draw rooms so every item is counted against a room and dwelling.</td></tr>}
         </tbody>
       </table>
       <DwellingEditor />

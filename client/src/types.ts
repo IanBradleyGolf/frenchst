@@ -60,11 +60,23 @@ export interface Component {
   notes?: string;
 }
 
+export interface RoomNote {
+  id: string;
+  kind: 'question' | 'comment';
+  text: string;
+  for?: string; // who should answer / act, e.g. "Electrician"
+  by?: string; // who wrote it
+  at: string; // ISO date-time
+  status: 'open' | 'resolved';
+  answer?: string;
+}
+
 export interface Room {
   id: string;
   name: string;
   dwelling: string; // e.g. "Dwelling 1", "Dwelling 2", "Common"
   points: number[]; // flat [x1,y1,x2,y2,...] in page points
+  notes?: RoomNote[];
 }
 
 export interface Item {
