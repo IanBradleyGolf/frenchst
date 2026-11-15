@@ -3,7 +3,7 @@ import { Circle, Group, Image as KImage, Layer, Line, Rect, Stage, Text, Transfo
 import type Konva from 'konva';
 import { renderPage } from '../pdf';
 import { useStore, type View } from '../store';
-import { centroid, distance, uid } from '../geometry';
+import { centroid, distance, roomAt, uid } from '../geometry';
 import { libraryMap, unknownComponent } from '../schedule';
 import { EXTENT } from '../symbols';
 import type { Floor, Item } from '../types';
@@ -27,6 +27,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
   const [wireFrom, setWireFrom] = useState<Item | null>(null);
   const [rotPrev, setRotPrev] = useState<{ delta: number } | null>(null);
   const [bendPrev, setBendPrev] = useState<{ key: string; bend: number } | null>(null);
+  const [hoverId, setHoverId] = useState<string | null>(null);
   const [lenPrev, setLenPrev] = useState<{ id: string; len: number; x: number; y: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
@@ -568,6 +569,8 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                   y={lenPrev && lenPrev.id === it.id ? lenPrev.y : it.y + (off?.dy ?? 0)}
                   draggable={tool === 'select' && !space}
                   onMouseDown={(e) => itemDown(e, it)}
+                  onMouseEnter={() => setHoverId(it.id)}
+                  onMouseLeave={() => setHoverId((h) => (h === it.id ? null : h))}
                   onDragStart={() => setDrag({ id: it.id, dx: 0, dy: 0 })}
                   onDragMove={(e) => setDrag({ id: it.id, dx: e.target.x() - it.x, dy: e.target.y() - it.y })}
                   onDragEnd={(e) => dragEnd(it, e.target)}
@@ -761,6 +764,29 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
           </Group>
         </Layer>
       </Stage>
+      {(() => {
+        const id = hoverId ?? (tool === 'select' && selection.kind === 'items' && selection.ids.length === 1 ? selection.ids[0] : null);
+        const it = id ? floor.items.find((i) => i.id === id) : undefined;
+        if (!it || drag || pan || rotPrev || lenPrev || marquee || tool === 'pan') return null;
+        const c = lib.get(it.code) ?? unknownComponent(it.code);
+        const room = roomAt(floor, it.x, it.y);
+        const left = it.x * v.zoom + v.x + 16, top = it.y * v.zoom + v.y + 16;
+        const len = c.symbol === 'profile' ? ((it.len ?? c.defaultLen ?? 1200) / 1000).toFixed(1) + ' m' : null;
+        return (
+          <div className="item-card" style={{ left: Math.min(left, size.w - 290), top: Math.min(top, size.h - 150) }}>
+            <div className="item-card-head">
+              <span className="item-card-sym" style={{ background: c.color }} />
+              <b>{c.code}</b>
+              <span>{c.name}</span>
+            </div>
+            <div className="item-card-meta">
+              {[c.category, c.control, len, it.circuit && `circuit ${it.circuit}`, room && room.name].filter(Boolean).join(' · ')}
+            </div>
+            {it.note && <div className="item-card-note">{it.note}</div>}
+            {c.notes && <div className="item-card-desc">{c.notes.length > 180 ? c.notes.slice(0, 177) + '…' : c.notes}</div>}
+          </div>
+        );
+      })()}
       <div className="canvas-hud">
         <button onClick={fit} title="Fit to window (F)">Fit</button>
         <span>{Math.round(v.zoom * 100)}%</span>
