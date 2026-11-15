@@ -48,6 +48,7 @@ export const SYMBOLS: Record<SymbolKind, Prim[]> = {
   rack: [{ t: 'rect', x: -1.1, y: -1.1, w: 2.2, h: 2.2, sw: 0.22 }, { t: 'rect', x: -0.8, y: -0.8, w: 1.6, h: 1.6, sw: 0.1 }, label('RACK', 0.45)],
   profile: [{ t: 'rect', x: -1.8, y: -0.28, w: 3.6, h: 0.56, sw: 0.14 }, { t: 'rect', x: -1.65, y: -0.12, w: 3.3, h: 0.24, fill: true }],
   driver: [{ t: 'rect', x: -1, y: -0.7, w: 2, h: 1.4, sw: 0.18 }, label('DRV', 0.55)],
+  contact: [{ t: 'rect', x: -1, y: -0.45, w: 0.85, h: 0.9, sw: 0.16 }, { t: 'rect', x: 0.15, y: -0.45, w: 0.85, h: 0.9, sw: 0.16 }],
   occsensor: [ring(), ring(0.62, 0.1), label('OS', 0.6)],
   pirswitch: [{ t: 'rect', x: -0.8, y: -1, w: 1.6, h: 2, sw: 0.18 }, { t: 'poly', pts: [-0.45, -0.1, 0, -0.55, 0.45, -0.1], w: 0.16 }, { t: 'poly', pts: [-0.3, 0.45, 0.3, 0.45], w: 0.16 }],
   pushbutton: [{ t: 'rect', x: -0.8, y: -1, w: 1.6, h: 2, sw: 0.18 }, { t: 'circle', cx: 0, cy: 0, r: 0.38, fill: true }],
