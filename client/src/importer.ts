@@ -50,6 +50,7 @@ export function classify(labels: Label[]): Map<string, Label[]> {
     }
     let m: RegExpMatchArray | null;
     if ((m = s.match(/^\d{3}-([A-Z][A-Z0-9]{1,5})$/))) add(m[1], l);
+    else if ((m = s.match(/^\d{3}-([A-Z]{1,5})-\d{1,2}$/))) add(m[1], l); // numbered tags, e.g. 210-LS-1 (speaker 1 of a pair)
     else if (/^\d{3}\.[A-Z]$/.test(s)) {
       const near = cts.some((c) => Math.hypot(c.x - l.x, c.y - l.y) < Math.max(12, l.h * 6));
       add(near ? 'SENSOR' : 'KEYPAD', l);
