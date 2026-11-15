@@ -77,7 +77,7 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
     for (const [k, list] of groups) {
       const code = mapping[k];
       if (!code) continue;
-      const light = /^(DL\d|WL\d|P\d|LED\d|LL\d|UP\d|GS\d|SP\d|LIN\d|LP$|BAT$|DRV$|PIRS$)/.test(k);
+      const light = /^(DL\d|WL\d|P\d|LED\d|LL\d|UP\d|GS\d|SP\d|LIN\d|LP$|BAT$|DRV$|PIRS$|OCS$)/.test(k);
       for (const l of list) {
         if (src && (l.x < 0 || l.y < 0 || l.x > src.width || l.y > src.height)) continue; // text outside the visible page
         out.push({ code, x: l.x, y: l.y, light, len: l.len, rot: l.rot });

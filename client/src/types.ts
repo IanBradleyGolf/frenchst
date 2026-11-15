@@ -3,6 +3,7 @@ export type SymbolKind =
   | 'alarm'
   | 'pushbutton'
   | 'pirswitch'
+  | 'occsensor'
   | 'profile'
   | 'driver'
   | 'rack'
