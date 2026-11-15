@@ -45,6 +45,16 @@ function Main() {
         const defaults: ProjectData = { schema: 1, dwellings: ['Dwelling 1', 'Dwelling 2', 'Common'], symbolSize: 4, library: structuredClone(DEFAULT_LIBRARY), floors: [] };
         p.data = Object.assign(defaults, p.data ?? {});
         useStore.getState().setProject(p);
+        // New standard components appear automatically; ones removed on purpose are not re-added.
+        const have = new Set(p.data.library.map((c) => c.code));
+        const seen = new Set(p.data.stdSeen ?? []);
+        const fresh = DEFAULT_LIBRARY.filter((c) => !have.has(c.code) && !seen.has(c.code));
+        if (fresh.length || DEFAULT_LIBRARY.some((c) => !seen.has(c.code))) {
+          useStore.getState().mutate((d) => {
+            d.library.push(...structuredClone(fresh));
+            d.stdSeen = DEFAULT_LIBRARY.map((c) => c.code);
+          });
+        }
       })
       .catch((e) => setError(e.message));
   }, [projectId]);
