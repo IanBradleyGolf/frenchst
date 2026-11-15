@@ -2,6 +2,7 @@ export type SymbolKind =
   | 'downlight'
   | 'alarm'
   | 'pushbutton'
+  | 'pirswitch'
   | 'profile'
   | 'driver'
   | 'rack'

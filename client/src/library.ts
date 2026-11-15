@@ -58,6 +58,7 @@ export const DEFAULT_LIBRARY: Component[] = [
   { code: 'INT', name: 'Intercom / access point', category: 'Data, AV & security', symbol: 'intercom', color: '#0c4a6e', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 165 },
   { code: 'PIR', name: 'Security motion detector (PIR)', category: 'Data, AV & security', symbol: 'sensor', color: '#be123c', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 120 },
   { code: 'SIR', name: 'Alarm siren / screamer', category: 'Data, AV & security', symbol: 'speaker', color: '#be123c', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 120 },
+  { code: 'PIRS', name: 'PIR sensor wall switch, vacancy mode (manual on / auto off)', category: 'Control', symbol: 'pirswitch', color: '#6d28d9', control: 'On/off', supplier: E, supplyRate: 0, installRate: 0, notes: 'Australian-approved, from the same switch range as the rest of the house (e.g. Clipsal Iconic 41EPIRM). Set to vacancy mode; mask the lens on the stair/lobby side. Switches the lights directly - standalone, not on the automation.' },
   { code: 'PB', name: 'Push-button switch (input to lighting controller)', category: 'Control', symbol: 'pushbutton', color: '#7c3aed', control: 'Control device', supplier: A, supplyRate: 0, installRate: 0, notes: 'Retractive button wired to a lighting controller input; toggles a relay circuit or scene, so automation and "all off" still work. Not a 240V switch in the light circuit.' },
   { code: 'RACK', name: 'Rack enclosure (SP1, floorstanding 600x600, 18RU)', category: 'Data, AV & security', symbol: 'rack', color: '#92400e', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 0 },
   { code: 'AK', name: 'Security alarm keypad (Ness Navigator touchscreen)', category: 'Data, AV & security', symbol: 'alarm', color: '#be123c', control: 'Low voltage', supplier: A, supplyRate: 0, installRate: 120 },
@@ -71,7 +72,7 @@ export const DEFAULT_LIBRARY: Component[] = [
 
 export const SYMBOL_KINDS: Component['symbol'][] = [
   'downlight', 'pinlight', 'adjustable', 'wall', 'pendant', 'linear', 'strip', 'lowlevel', 'uplight', 'spike', 'spot', 'panel', 'surface', 'fan',
-  'keypad', 'sensor', 'pushbutton', 'profile', 'driver', 'rack', 'alarm', 'access', 'strike', 'doorctl', 'soundbar', 'sub', 'touchscreen', 'gpo', 'usb', 'gpo-wp', 'data', 'tv', 'wap', 'camera', 'intercom', 'speaker', 'exhaust', 'towel', 'smoke', 'circuit', 'generic',
+  'keypad', 'sensor', 'pushbutton', 'pirswitch', 'profile', 'driver', 'rack', 'alarm', 'access', 'strike', 'doorctl', 'soundbar', 'sub', 'touchscreen', 'gpo', 'usb', 'gpo-wp', 'data', 'tv', 'wap', 'camera', 'intercom', 'speaker', 'exhaust', 'towel', 'smoke', 'circuit', 'generic',
 ];
 
 export const CONTROLS: Component['control'][] = ['DALI', 'DALI relay', 'Phase dim', 'On/off', 'Control device', 'Power', 'Low voltage', 'Other'];
