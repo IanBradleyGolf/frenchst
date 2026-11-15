@@ -1,3 +1,4 @@
+import { compareComponents } from './library';
 import { isVisible } from './layers';
 import { roomAt } from './geometry';
 import type { Component, Floor, ProjectData } from './types';
@@ -52,7 +53,7 @@ export function totals(data: ProjectData, items: Placed[]): Line[] {
     const q = c?.symbol === 'profile' ? (p.len ?? c.defaultLen ?? 1200) / 1000 : 1;
     counts.set(p.code, (counts.get(p.code) ?? 0) + q);
   }
-  const order = new Map(data.library.map((c, i) => [c.code, i]));
+  const order = new Map([...data.library].sort(compareComponents).map((c, i) => [c.code, i]));
   return [...counts.entries()]
     .map(([code, raw]) => {
       const c = lib.get(code) ?? unknownComponent(code);

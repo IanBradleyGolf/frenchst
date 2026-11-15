@@ -9,6 +9,7 @@ import { dwellingColor } from './PlanCanvas';
 import { ImportDialog } from './ImportDialog';
 import { linkSelected, unlinkSelected, deleteWire } from '../circuits';
 import { deleteMark, updateText } from '../marks';
+import { compareComponents } from '../library';
 import { AllNotes, RoomNotes, openQuestions } from './RoomNotes';
 
 export function RightPanel({ showLabels, setShowLabels, showRooms, setShowRooms, showWires, setShowWires }: { showLabels: boolean; setShowLabels: (v: boolean) => void; showRooms: boolean; setShowRooms: (v: boolean) => void; showWires: boolean; setShowWires: (v: boolean) => void }) {
@@ -126,7 +127,7 @@ function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms,
         <label htmlFor="pp-code">Component</label>
         <select id="pp-code" value={codes.length === 1 ? codes[0] : ''} onChange={(e) => updateSel((it) => (it.code = e.target.value))}>
           {codes.length > 1 && <option value="">(mixed)</option>}
-          {data.library.map((c) => (
+          {[...data.library].sort(compareComponents).map((c) => (
             <option key={c.code} value={c.code}>
               {c.code} – {c.name}
             </option>

@@ -6,6 +6,7 @@ import { planBytes } from './pdf';
 import { pdfSafe } from './marks';
 import { byRoom, copiesOf, libraryMap, placedItems, totals, unknownComponent } from './schedule';
 import { halfUnits, primsFor } from './symbols';
+import { compareComponents } from './library';
 import type { Component, Floor, Project } from './types';
 
 function download(blob: Blob, name: string) {
@@ -82,7 +83,7 @@ export function exportExcel(project: Project) {
 
   XLSX.utils.book_append_sheet(
     wb,
-    XLSX.utils.json_to_sheet(data.library.map((c) => ({ Code: c.code, Name: c.name, Category: c.category, Control: c.control, Supplier: c.supplier, 'Supply rate': c.supplyRate, 'Install rate': c.installRate, Notes: c.notes ?? '' }))),
+    XLSX.utils.json_to_sheet([...data.library].sort(compareComponents).map((c) => ({ Code: c.code, Name: c.name, Category: c.category, Control: c.control, Supplier: c.supplier, 'Supply rate': c.supplyRate, 'Install rate': c.installRate, Notes: c.notes ?? '' }))),
     'Library',
   );
 

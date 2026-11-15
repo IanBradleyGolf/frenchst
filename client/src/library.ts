@@ -95,3 +95,17 @@ export function newProjectData(): ProjectData {
     floors: [],
   };
 }
+
+/** Category display order; anything else follows alphabetically. */
+export const CATEGORY_ORDER = ['Downlights', 'Wall lights & pendants', 'LED strips', 'Linear & battens', 'Low-level & external', 'Control', 'Power', 'Data, AV & security'];
+
+const natural = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+
+/** Sort by category (in CATEGORY_ORDER), then code in natural order (DL1, DL3 … DL9, DL10). */
+export function compareComponents(a: Component, b: Component) {
+  const ia = CATEGORY_ORDER.indexOf(a.category), ib = CATEGORY_ORDER.indexOf(b.category);
+  const ca = ia < 0 ? 999 : ia, cb = ib < 0 ? 999 : ib;
+  if (ca !== cb) return ca - cb;
+  if (ca === 999 && a.category !== b.category) return natural.compare(a.category, b.category);
+  return natural.compare(a.code, b.code);
+}

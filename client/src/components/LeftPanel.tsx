@@ -5,7 +5,7 @@ import { FloorDialog } from './FloorDialog';
 import { ComponentDialog } from './ComponentDialog';
 import { layerCounts, layerOf } from '../layers';
 import { duplicateFloor } from '../floors';
-import { DEFAULT_LIBRARY } from '../library';
+import { DEFAULT_LIBRARY, compareComponents } from '../library';
 
 function useCollapsed() {
   const [set, setSet] = useState<Set<string>>(() => {
@@ -62,7 +62,7 @@ export function LeftPanel() {
   const groups = useMemo(() => {
     const ql = q.trim().toLowerCase();
     const g = new Map<string, typeof data.library>();
-    for (const c of data.library) {
+    for (const c of [...data.library].sort(compareComponents)) {
       if (ql && !`${c.code} ${c.name} ${c.category}`.toLowerCase().includes(ql)) continue;
       if (!g.has(c.category)) g.set(c.category, []);
       g.get(c.category)!.push(c);

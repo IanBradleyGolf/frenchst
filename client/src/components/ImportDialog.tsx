@@ -6,7 +6,7 @@ import { classify, defaultMapping, similarity, snapToWires, type Pt } from '../i
 import { groupsFromLinks, pageWires, type Wire } from '../wires';
 import { uid } from '../geometry';
 import { useStore } from '../store';
-import { DEFAULT_LIBRARY } from '../library';
+import { DEFAULT_LIBRARY, compareComponents } from '../library';
 import type { Floor, PlanFile } from '../types';
 import { AlignPane } from './AlignPane';
 import { Thumb } from './FloorDialog';
@@ -267,7 +267,7 @@ export function ImportDialog({ floor, onClose }: { floor: Floor; onClose: () => 
                         <td>
                           <select value={mapping[k] ?? ''} onChange={(e) => setMapping((m) => ({ ...m, [k]: e.target.value }))} aria-label={`Map ${k}`}>
                             <option value="">Skip</option>
-                            {library.map((c) => (
+                            {[...library].sort(compareComponents).map((c) => (
                               <option key={c.code} value={c.code}>{c.code} – {c.name}</option>
                             ))}
                             {missingStd.length > 0 && (
