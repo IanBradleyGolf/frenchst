@@ -188,7 +188,7 @@ export async function exportPdf(project: Project, opts: { labels: boolean; rooms
       const c = lib.get(it.code) ?? unknownComponent(it.code);
       drawSymbol(page, bold, c, it.x * s, it.y * s, it.rot, data.symbolSize * s, H, isStretchy(c.symbol) ? halfUnits(lenOf(it, c, data.symbolSize, floor.mmPerPt), floor.mmPerPt, data.symbolSize) : undefined, c.symbol === 'loop' ? halfUnits(widOf(it, c), floor.mmPerPt, data.symbolSize) : undefined);
       if (opts.labels && c.symbol === 'profile') {
-        const txt = `${it.code} ${((it.len ?? c.defaultLen ?? 1200) / 1000).toFixed(1)} m${it.circuit ? ' ' + it.circuit : ''}`;
+        const txt = `${it.code}${it.circuit ? ' ' + it.circuit : ''}`;
         const fs = data.symbolSize * s * 0.95;
         page.drawText(txt, { x: it.x * s - font.widthOfTextAtSize(txt, fs) / 2, y: H - it.y * s + data.symbolSize * s * 0.75, size: fs, font, color: hex(c.color) });
       } else if (opts.labels) {

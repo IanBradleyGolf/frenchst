@@ -644,9 +644,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
               const halfW = isLoop ? halfUnits(widMm, floor.mmPerPt, sz) : undefined;
               const ext = half ? half * sz : (EXTENT[c.symbol] ?? 1) * sz;
               const extY = halfW ? halfW * sz : sz;
-              const lenTxt = isLoop
-                ? '' // size is indicative only; not shown
-                : half && (c.symbol === 'profile' || it.len || (lenPrev && lenPrev.id === it.id)) ? ` ${(lenMm / 1000).toFixed(1)}m` : '';
+              const lenTxt = ''; // labels show the component only, never a length
               return (
                 <Group
                   key={it.id}
