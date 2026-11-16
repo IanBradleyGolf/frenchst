@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useFloor, useStore } from '../store';
 import { distance, mirrorItems, mirrorRoom, roomAt, polygonArea } from '../geometry';
-import { byRoom, copiesOf, libraryMap, money, NO_DWELLING, placedItems, totals } from '../schedule';
+import { byRoom, copiesOf, libraryMap, money, NO_DWELLING, NO_ROOM, placedItems, totals, type Placed } from '../schedule';
 import { svgFor } from '../symbols';
 import { api } from '../api';
-import type { Floor, ProjectData, Revision, TextNote } from '../types';
+import type { Component, Floor, ProjectData, Revision, TextNote } from '../types';
 import { dwellingColor } from './PlanCanvas';
 import { ImportDialog } from './ImportDialog';
 import { linkSelected, unlinkSelected, deleteWire } from '../circuits';
@@ -381,12 +381,59 @@ function DwellingEditor() {
 
 /* ---------------- Schedule ---------------- */
 
+function WhereUsed({ items, codes, code, setCode, showFloor }: { items: Placed[]; codes: Component[]; code: string; setCode: (c: string) => void; showFloor: boolean }) {
+  const { setFloor, select } = useStore.getState();
+  const c = codes.find((x) => x.code === code);
+  const groups = useMemo(() => {
+    const m = new Map<string, { floor: Floor; room: string; dwelling: string; ids: string[] }>();
+    for (const p of items) {
+      if (p.code !== code) continue;
+      const k = `${p.floor.id}|${p.room}`;
+      if (!m.has(k)) m.set(k, { floor: p.floor, room: p.room, dwelling: p.dwelling, ids: [] });
+      m.get(k)!.ids.push(p.itemId);
+    }
+    return [...m.values()];
+  }, [items, code]);
+  const total = groups.reduce((a, g) => a + g.ids.length, 0);
+  return (
+    <div className="stack">
+      <select value={code} onChange={(e) => setCode(e.target.value)} aria-label="Component">
+        {codes.map((x) => <option key={x.code} value={x.code}>{x.code} – {x.name}</option>)}
+      </select>
+      {c && (
+        <div className="row gap" style={{ alignItems: 'center' }}>
+          <span dangerouslySetInnerHTML={{ __html: svgFor(c.symbol, c.color, 18) }} />
+          <span className="small"><b>{total}</b> placed in <b>{groups.length}</b> {groups.length === 1 ? 'room' : 'rooms'}</span>
+        </div>
+      )}
+      <table className="tbl">
+        <thead>
+          <tr>{showFloor && <th>Floor</th>}<th>Room</th><th className="num">Qty</th><th></th></tr>
+        </thead>
+        <tbody>
+          {groups.map((g) => (
+            <tr key={g.floor.id + g.room}>
+              {showFloor && <td className="small">{g.floor.name}</td>}
+              <td>{g.room === NO_ROOM ? <span className="muted">Not in a room</span> : g.room}</td>
+              <td className="num">{g.ids.length}</td>
+              <td className="num"><button className="mini" title="Select these on the plan" onClick={() => { setFloor(g.floor.id); setTimeout(() => { select({ kind: 'items', ids: g.ids }); useStore.setState({ rightTab: 'schedule' }); }, 0); }}>Show</button></td>
+            </tr>
+          ))}
+          {!groups.length && <tr><td colSpan={showFloor ? 4 : 3} className="muted">Not placed.</td></tr>}
+        </tbody>
+      </table>
+      <p className="muted small">Show switches to that floor and highlights those items on the plan. Tip: click any row in Totals to jump here.</p>
+    </div>
+  );
+}
+
 function Schedule() {
   const data = useStore((s) => s.project!.data);
   const floorId = useStore((s) => s.floorId);
   const [scope, setScope] = useState<'floor' | 'project'>('project');
   const [dwelling, setDwelling] = useState('all');
-  const [view, setView] = useState<'totals' | 'rooms'>('totals');
+  const [view, setView] = useState<'totals' | 'rooms' | 'where'>('totals');
+  const [whereCode, setWhereCode] = useState('');
 
   const items = useMemo(() => {
     const floors = scope === 'floor' ? data.floors.filter((f) => f.id === floorId) : data.floors;
@@ -420,17 +467,20 @@ function Schedule() {
         <div className="seg">
           <button className={view === 'totals' ? 'sel' : ''} onClick={() => setView('totals')}>Totals</button>
           <button className={view === 'rooms' ? 'sel' : ''} onClick={() => setView('rooms')}>By room</button>
+          <button className={view === 'where' ? 'sel' : ''} onClick={() => { setView('where'); if (!whereCode && tot.length) setWhereCode(tot[0].component.code); }}>Where used</button>
         </div>
       </div>
       {unassigned > 0 && dwelling === 'all' && data.floors.some((f) => f.rooms.length > 0) && <p className="warn small">{unassigned} items are not inside a room yet.</p>}
-      {view === 'totals' ? (
+      {view === 'where' ? (
+        <WhereUsed items={items} codes={tot.map((l) => l.component)} code={whereCode} setCode={setWhereCode} showFloor={scope === 'project'} />
+      ) : view === 'totals' ? (
         <table className="tbl">
           <thead>
             <tr><th></th><th>Code</th><th className="num">Per dw.</th><th className="num">×{n} qty</th><th className="num">Supply</th><th className="num">Install</th><th className="num">Total</th></tr>
           </thead>
           <tbody>
             {tot.map((l) => (
-              <tr key={l.component.code} title={l.component.name}>
+              <tr key={l.component.code} title={`${l.component.name} — click to see which rooms`} className="clickable" onClick={() => { setWhereCode(l.component.code); setView('where'); }}>
                 <td><span dangerouslySetInnerHTML={{ __html: svgFor(l.component.symbol, l.component.color, 16) }} /></td>
                 <td className="mono">{l.component.code}</td>
                 <td className="num">{l.qty}</td>

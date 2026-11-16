@@ -237,3 +237,5 @@ details summary { cursor: pointer; color: var(--ink-2); }
 .item-card-meta { color: var(--muted); }
 .item-card-note { background: #fffbeb; border-radius: 4px; padding: 3px 6px; }
 .item-card-desc { color: #475569; }
+.tbl tr.clickable { cursor: pointer; }
+.tbl tr.clickable:hover td { background: #f8fafc; }
