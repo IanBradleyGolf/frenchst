@@ -5,7 +5,7 @@ import { PDFDocument, StandardFonts, rgb, degrees, type PDFPage, type PDFFont } 
 import { planBytes } from './pdf';
 import { pdfSafe } from './marks';
 import { byRoom, copiesOf, libraryMap, placedItems, totals, unknownComponent } from './schedule';
-import { halfUnits, isStretchy, lenOf, primsFor } from './symbols';
+import { halfUnits, isStretchy, lenOf, primsFor, widOf } from './symbols';
 import { compareComponents } from './library';
 import type { Component, Floor, Project } from './types';
 
@@ -99,7 +99,7 @@ function hex(c: string) {
 }
 
 /** Draw one symbol at page point (x, y) measured from the top-left, as in the editor. */
-function drawSymbol(page: PDFPage, font: PDFFont, comp: Component, x: number, y: number, rot: number, size: number, pageH: number, half?: number) {
+function drawSymbol(page: PDFPage, font: PDFFont, comp: Component, x: number, y: number, rot: number, size: number, pageH: number, half?: number, halfW?: number) {
   const color = hex(comp.color);
   const white = rgb(1, 1, 1);
   const r = (-rot * Math.PI) / 180;
@@ -109,7 +109,7 @@ function drawSymbol(page: PDFPage, font: PDFFont, comp: Component, x: number, y:
     const ux = u * size, vy = -v * size;
     return { x: x + ux * cos - vy * sin, y: pageH - y + ux * sin + vy * cos };
   };
-  for (const p of primsFor(comp.symbol, half)) {
+  for (const p of primsFor(comp.symbol, half, halfW)) {
     if (p.t === 'circle') {
       const c = P(p.cx, p.cy);
       page.drawCircle({ x: c.x, y: c.y, size: p.r * size, color: p.fill ? color : white, opacity: p.fill ? 1 : 0.85, borderColor: p.fill ? undefined : color, borderWidth: p.fill ? 0 : (p.w ?? 0.18) * size });
@@ -125,7 +125,7 @@ function drawSymbol(page: PDFPage, font: PDFFont, comp: Component, x: number, y:
       page.drawSvgPath(d, {
         x: 0,
         y: 0,
-        color: fill ? color : closed ? white : undefined,
+        color: fill ? color : closed && !(p.t === 'poly' && p.hollow) ? white : undefined,
         opacity: fill ? 1 : 0.85,
         borderColor: fill ? undefined : color,
         borderWidth: fill ? 0 : sw * size,
@@ -186,7 +186,7 @@ export async function exportPdf(project: Project, opts: { labels: boolean; rooms
     }
     for (const it of visible) {
       const c = lib.get(it.code) ?? unknownComponent(it.code);
-      drawSymbol(page, bold, c, it.x * s, it.y * s, it.rot, data.symbolSize * s, H, isStretchy(c.symbol) ? halfUnits(lenOf(it, c, data.symbolSize, floor.mmPerPt), floor.mmPerPt, data.symbolSize) : undefined);
+      drawSymbol(page, bold, c, it.x * s, it.y * s, it.rot, data.symbolSize * s, H, isStretchy(c.symbol) ? halfUnits(lenOf(it, c, data.symbolSize, floor.mmPerPt), floor.mmPerPt, data.symbolSize) : undefined, c.symbol === 'loop' ? halfUnits(widOf(it, c), floor.mmPerPt, data.symbolSize) : undefined);
       if (opts.labels && c.symbol === 'profile') {
         const txt = `${it.code} ${((it.len ?? c.defaultLen ?? 1200) / 1000).toFixed(1)} m${it.circuit ? ' ' + it.circuit : ''}`;
         const fs = data.symbolSize * s * 0.95;

@@ -7,7 +7,7 @@ import type { SymbolKind } from './types';
 export type Prim =
   | { t: 'circle'; cx: number; cy: number; r: number; fill?: boolean; w?: number }
   | { t: 'rect'; x: number; y: number; w: number; h: number; fill?: boolean; sw?: number }
-  | { t: 'poly'; pts: number[]; fill?: boolean; closed?: boolean; w?: number; dash?: number[] }
+  | { t: 'poly'; pts: number[]; fill?: boolean; closed?: boolean; w?: number; dash?: number[]; hollow?: boolean }
   | { t: 'text'; x: number; y: number; s: string; size: number };
 
 const ring = (r = 1, w = 0.18): Prim => ({ t: 'circle', cx: 0, cy: 0, r, w });
@@ -50,6 +50,7 @@ export const SYMBOLS: Record<SymbolKind, Prim[]> = {
   driver: [{ t: 'rect', x: -1, y: -0.7, w: 2, h: 1.4, sw: 0.18 }, label('DRV', 0.55)],
   contact: [{ t: 'rect', x: -1, y: -0.45, w: 0.85, h: 0.9, sw: 0.16 }, { t: 'rect', x: 0.15, y: -0.45, w: 0.85, h: 0.9, sw: 0.16 }],
   switch: [{ t: 'rect', x: -0.8, y: -1, w: 1.6, h: 2, sw: 0.18 }, { t: 'rect', x: -0.25, y: -0.55, w: 0.5, h: 1.1, fill: true }],
+  loop: [{ t: 'poly', pts: [-1.6, -1, 1.6, -1, 1.6, 1, -1.6, 1], closed: true, hollow: true, w: 0.3, dash: [0.6, 0.35] }],
   occsensor: [ring(), ring(0.62, 0.1), label('OS', 0.6)],
   pirswitch: [{ t: 'rect', x: -0.8, y: -1, w: 1.6, h: 2, sw: 0.18 }, { t: 'poly', pts: [-0.45, -0.1, 0, -0.55, 0.45, -0.1], w: 0.16 }, { t: 'poly', pts: [-0.3, 0.45, 0.3, 0.45], w: 0.16 }],
   pushbutton: [{ t: 'rect', x: -0.8, y: -1, w: 1.6, h: 2, sw: 0.18 }, { t: 'circle', cx: 0, cy: 0, r: 0.38, fill: true }],
@@ -101,7 +102,8 @@ export function halfUnits(lenMm: number, mmPerPt: number | undefined, size: numb
 }
 
 /** Primitives for a symbol; a 'profile' is stretched to the given half-length (symbol units). */
-export function primsFor(kind: SymbolKind, half?: number): Prim[] {
+export function primsFor(kind: SymbolKind, half?: number, halfW?: number): Prim[] {
+  if (kind === 'loop' && half) { const h = halfW ?? half * 0.6; return [{ t: 'poly', pts: [-half, -h, half, -h, half, h, -half, h], closed: true, hollow: true, w: 0.3, dash: [0.6, 0.35] }]; }
   if (kind === 'linear' && half) return [{ t: 'rect', x: -half, y: -0.35, w: half * 2, h: 0.7, fill: true }];
   if (kind === 'strip' && half) return [{ t: 'poly', pts: [-half, 0, half, 0], w: 0.4, dash: [0.6, 0.35] }];
   if (kind !== 'profile' || !half) return SYMBOLS[kind];
@@ -113,7 +115,7 @@ export function primsFor(kind: SymbolKind, half?: number): Prim[] {
 
 /** Symbols that can be stretched to a length. */
 export function isStretchy(kind: SymbolKind) {
-  return kind === 'profile' || kind === 'linear' || kind === 'strip';
+  return kind === 'profile' || kind === 'linear' || kind === 'strip' || kind === 'loop';
 }
 
 /** Length in mm of a stretchy item: its own length, the component default, or the plain symbol's drawn length. */
@@ -121,5 +123,17 @@ export function lenOf(it: { len?: number }, c: { symbol: SymbolKind; defaultLen?
   if (it.len) return it.len;
   if (c.defaultLen) return c.defaultLen;
   if (c.symbol === 'profile') return 1200;
+  if (c.symbol === 'loop') return 3000;
   return (c.symbol === 'strip' ? 3.6 : 3.2) * size * (mmPerPt || DEFAULT_MM_PER_PT); // drawn length of the plain symbol
+}
+
+/** Depth in mm of a rectangular loop. */
+export function widOf(it: { wid?: number }, c: { defaultWid?: number }) {
+  return it.wid ?? c.defaultWid ?? 2000;
+}
+
+/** Metres for the schedule: profiles by length, loops by perimeter. */
+export function metresOf(it: { len?: number; wid?: number }, c: { symbol: SymbolKind; defaultLen?: number; defaultWid?: number }) {
+  if (c.symbol === 'loop') return (2 * ((it.len ?? c.defaultLen ?? 3000) + widOf(it, c))) / 1000;
+  return (it.len ?? c.defaultLen ?? 1200) / 1000;
 }

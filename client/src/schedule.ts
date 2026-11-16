@@ -1,3 +1,4 @@
+import { metresOf } from './symbols';
 import { compareComponents } from './library';
 import { isVisible } from './layers';
 import { roomAt } from './geometry';
@@ -11,6 +12,7 @@ export interface Placed {
   dwelling: string; // room dwelling or "(unassigned)"
   circuit: string;
   len?: number; // mm
+  wid?: number; // mm
 }
 
 export const NO_ROOM = '(no room)';
@@ -22,7 +24,7 @@ export function placedItems(data: ProjectData, floors: Floor[] = data.floors): P
     for (const it of f.items) {
       if (!isVisible(data, it)) continue;
       const r = roomAt(f, it.x, it.y);
-      out.push({ floor: f, itemId: it.id, code: it.code, room: r?.name ?? NO_ROOM, dwelling: r?.dwelling ?? NO_DWELLING, circuit: it.circuit ?? '', len: it.len });
+      out.push({ floor: f, itemId: it.id, code: it.code, room: r?.name ?? NO_ROOM, dwelling: r?.dwelling ?? NO_DWELLING, circuit: it.circuit ?? '', len: it.len, wid: it.wid });
     }
   }
   return out;
@@ -50,7 +52,7 @@ export function totals(data: ProjectData, items: Placed[]): Line[] {
   for (const p of items) {
     const c = lib.get(p.code);
     // Length-drawn components are counted in metres.
-    const q = c?.symbol === 'profile' ? (p.len ?? c.defaultLen ?? 1200) / 1000 : 1;
+    const q = c?.symbol === 'profile' || c?.symbol === 'loop' ? metresOf(p, c) : 1;
     counts.set(p.code, (counts.get(p.code) ?? 0) + q);
   }
   const order = new Map([...data.library].sort(compareComponents).map((c, i) => [c.code, i]));

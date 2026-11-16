@@ -10,7 +10,7 @@ import { ImportDialog } from './ImportDialog';
 import { linkSelected, unlinkSelected, deleteWire } from '../circuits';
 import { deleteMark, updateText } from '../marks';
 import { compareComponents } from '../library';
-import { isStretchy, lenOf } from '../symbols';
+import { isStretchy, lenOf, metresOf, widOf } from '../symbols';
 import { ClearFloor } from './ClearFloor';
 import { AllNotes, RoomNotes, openQuestions } from './RoomNotes';
 
@@ -171,7 +171,13 @@ function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms,
               <div className="row gap wrap">
                 <label htmlFor="pp-len" className="small" style={{ margin: 0 }}>Length (m)</label>
                 <input id="pp-len" type="number" step={0.1} min={0.1} style={{ width: 80 }} value={lens.size === 1 ? +([...lens][0] / 1000).toFixed(2) : ''} placeholder="mixed" onChange={(e) => { const v = Number(e.target.value); if (v > 0) updateSel((it) => (it.len = Math.round(v * 1000)), 'len'); }} />
-                <span className="muted small">Total {(items.reduce((a, i) => a + lenOf(i, lib.get(i.code)!, data.symbolSize, floor.mmPerPt), 0) / 1000).toFixed(1)} m</span>
+                {items.every((i) => lib.get(i.code)?.symbol === 'loop') && (
+                  <>
+                    <label htmlFor="pp-wid" className="small" style={{ margin: 0 }}>Depth (m)</label>
+                    <input id="pp-wid" type="number" step={0.1} min={0.2} style={{ width: 80 }} value={new Set(items.map((i) => widOf(i, lib.get(i.code)!))).size === 1 ? +(widOf(items[0], lib.get(items[0].code)!) / 1000).toFixed(2) : ''} placeholder="mixed" onChange={(e) => { const v = Number(e.target.value); if (v > 0) updateSel((it) => (it.wid = Math.round(v * 1000)), 'wid'); }} />
+                  </>
+                )}
+                <span className="muted small">Total {(items.reduce((a, i) => a + (lib.get(i.code)!.symbol === 'loop' ? metresOf(i, lib.get(i.code)!) * 1000 : lenOf(i, lib.get(i.code)!, data.symbolSize, floor.mmPerPt)), 0) / 1000).toFixed(1)} m</span>
               </div>
               <p className="muted small">Drag the square end handles to stretch (snaps to 100 mm; Shift for free).{floor.mmPerPt ? '' : ' Scale not set on this floor, so lengths are drawn assuming 1:100 — set the scale for true lengths.'}</p>
             </>

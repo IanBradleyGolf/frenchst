@@ -4,6 +4,7 @@ export type SymbolKind =
   | 'pushbutton'
   | 'pirswitch'
   | 'occsensor'
+  | 'loop'
   | 'switch'
   | 'contact'
   | 'profile'
@@ -58,6 +59,7 @@ export interface Component {
   supplyRate: number; // $ ex GST per unit
   installRate: number; // $ ex GST per unit (per metre for symbol 'profile')
   defaultLen?: number; // mm, for components drawn to length
+  defaultWid?: number; // mm, depth for 'loop' components
   notes?: string;
 }
 
@@ -88,6 +90,7 @@ export interface Item {
   rot: number; // degrees
   circuit?: string;
   len?: number; // mm, for components drawn to length (symbol 'profile')
+  wid?: number; // mm, depth of a rectangular loop (symbol 'loop')
   layer?: string; // where it came from, e.g. "LA Lounge lighting"; undefined = drawn by hand
   note?: string;
 }

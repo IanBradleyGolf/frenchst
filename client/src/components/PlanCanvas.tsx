@@ -12,7 +12,7 @@ import { createRoom } from '../rooms';
 import { isVisible } from '../layers';
 import { addText } from '../marks';
 import { openQuestions } from './RoomNotes';
-import { DEFAULT_MM_PER_PT, halfUnits, isStretchy, lenOf } from '../symbols';
+import { DEFAULT_MM_PER_PT, halfUnits, isStretchy, lenOf, metresOf, widOf } from '../symbols';
 import { bendFor, circuitColor, circuitLinks, circuitsOf, wireGeom, wireTogether } from '../circuits';
 
 const RENDER_SCALE = 3;
@@ -29,7 +29,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
   const [bendPrev, setBendPrev] = useState<{ key: string; bend: number } | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [wallPrev, setWallPrev] = useState<{ id: string; end: 1 | 2; x: number; y: number } | null>(null);
-  const [lenPrev, setLenPrev] = useState<{ id: string; len: number; x: number; y: number } | null>(null);
+  const [lenPrev, setLenPrev] = useState<{ id: string; len: number; wid?: number; x: number; y: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -205,7 +205,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
     const p = toPage(sp.x, sp.y);
     if (tool === 'place' && activeCode) {
       const comp = lib.get(activeCode);
-      const item: Item = { id: uid(), code: activeCode, x: p.x, y: p.y, rot: 0, ...(comp?.symbol === 'profile' ? { len: comp.defaultLen ?? 1200 } : {}) };
+      const item: Item = { id: uid(), code: activeCode, x: p.x, y: p.y, rot: 0, ...(comp?.symbol === 'profile' ? { len: comp.defaultLen ?? 1200 } : comp?.symbol === 'loop' ? { len: comp.defaultLen ?? 3000, wid: comp.defaultWid ?? 2000 } : {}) };
       mutate((d) => d.floors.find((x) => x.id === floor.id)!.items.push(item));
       select({ kind: 'items', ids: [item.id] });
       return;
@@ -639,8 +639,14 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
               const off = drag && sel && drag.id !== it.id ? drag : null;
               const lenMm = isStretchy(c.symbol) ? (lenPrev && lenPrev.id === it.id ? lenPrev.len : lenOf(it, c, sz, floor.mmPerPt)) : 0;
               const half = lenMm ? halfUnits(lenMm, floor.mmPerPt, sz) : undefined;
+              const isLoop = c.symbol === 'loop';
+              const widMm = isLoop ? (lenPrev && lenPrev.id === it.id && lenPrev.wid ? lenPrev.wid : widOf(it, c)) : 0;
+              const halfW = isLoop ? halfUnits(widMm, floor.mmPerPt, sz) : undefined;
               const ext = half ? half * sz : (EXTENT[c.symbol] ?? 1) * sz;
-              const lenTxt = half && (c.symbol === 'profile' || it.len || (lenPrev && lenPrev.id === it.id)) ? ` ${(lenMm / 1000).toFixed(1)}m` : '';
+              const extY = halfW ? halfW * sz : sz;
+              const lenTxt = isLoop
+                ? ` ${(lenMm / 1000).toFixed(1)}×${(widMm / 1000).toFixed(1)}m`
+                : half && (c.symbol === 'profile' || it.len || (lenPrev && lenPrev.id === it.id)) ? ` ${(lenMm / 1000).toFixed(1)}m` : '';
               return (
                 <Group
                   key={it.id}
@@ -655,12 +661,16 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                   onDragEnd={(e) => dragEnd(it, e.target)}
                 >
                   <Group rotation={sel && rotPrev ? it.rot + rotPrev.delta : it.rot}>
-                    <Rect x={-ext - 1} y={-sz - 1} width={(ext + 1) * 2} height={(sz + 1) * 2} fill="transparent" />
-                    {sel && <Rect x={-ext - 1.5} y={-sz - 1.5} width={(ext + 1.5) * 2} height={(sz + 1.5) * 2} stroke="#f97316" strokeWidth={1.2 / v.zoom} dash={[3 / v.zoom, 2 / v.zoom]} />}
-                    <SymbolShape kind={c.symbol} color={c.color} size={sz} half={half} />
+                    {isLoop ? (
+                      <Rect x={-ext} y={-extY} width={ext * 2} height={extY * 2} stroke="rgba(0,0,0,0.001)" strokeWidth={sz * 1.2} fillEnabled={false} />
+                    ) : (
+                      <Rect x={-ext - 1} y={-sz - 1} width={(ext + 1) * 2} height={(sz + 1) * 2} fill="transparent" />
+                    )}
+                    {sel && <Rect x={-ext - 1.5} y={-extY - 1.5} width={(ext + 1.5) * 2} height={(extY + 1.5) * 2} stroke="#f97316" strokeWidth={1.2 / v.zoom} dash={[3 / v.zoom, 2 / v.zoom]} listening={false} />}
+                    <SymbolShape kind={c.symbol} color={c.color} size={sz} half={half} halfW={halfW} />
                   </Group>
                   {showLabels && (
-                    <Text x={half ? -ext : ext + 1} y={half ? -sz * 1.6 : -sz * 0.9} text={(it.circuit ? `${it.code}·${it.circuit}` : it.code) + lenTxt} fontSize={sz * 0.95} fontFamily="IBM Plex Mono" fontStyle="500" fill={c.color} listening={false} />
+                    <Text x={half ? -ext : ext + 1} y={isLoop ? -extY - sz * 1.4 : half ? -sz * 1.6 : -sz * 0.9} text={(it.circuit ? `${it.code}·${it.circuit}` : it.code) + lenTxt} fontSize={sz * 0.95} fontFamily="IBM Plex Mono" fontStyle="500" fill={c.color} listening={false} />
                   )}
                 </Group>
               );
@@ -671,6 +681,48 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
               const c = it && lib.get(it.code);
               if (!it || !c || !isStretchy(c.symbol)) return null;
               const mpp = floor.mmPerPt || DEFAULT_MM_PER_PT;
+              if (c.symbol === 'loop') {
+                const L = lenOf(it, c, sz, floor.mmPerPt), D = widOf(it, c);
+                const th = (it.rot * Math.PI) / 180, ux = Math.cos(th), uy = Math.sin(th), vx = -uy, vy = ux;
+                // top-left corner stays put; the handle is the bottom-right corner
+                const tl = { x: it.x - ux * (L / mpp / 2) - vx * (D / mpp / 2), y: it.y - uy * (L / mpp / 2) - vy * (D / mpp / 2) };
+                const cur = lenPrev && lenPrev.id === it.id ? lenPrev : { len: L, wid: D, x: it.x, y: it.y };
+                const br = { x: tl.x + ux * (cur.len / mpp) + vx * ((cur.wid ?? D) / mpp), y: tl.y + uy * (cur.len / mpp) + vy * ((cur.wid ?? D) / mpp) };
+                const calc = (px: number, py: number, free: boolean) => {
+                  const dx = px - tl.x, dy = py - tl.y;
+                  let l = (dx * ux + dy * uy) * mpp, w = (dx * vx + dy * vy) * mpp;
+                  l = Math.max(200, free ? l : Math.round(l / 100) * 100);
+                  w = Math.max(200, free ? w : Math.round(w / 100) * 100);
+                  return { id: it.id, len: l, wid: w, x: tl.x + (ux * l + vx * w) / mpp / 2, y: tl.y + (uy * l + vy * w) / mpp / 2 };
+                };
+                return (
+                  <Rect
+                    x={br.x - 4 / v.zoom}
+                    y={br.y - 4 / v.zoom}
+                    width={8 / v.zoom}
+                    height={8 / v.zoom}
+                    fill="#fff"
+                    stroke="#f97316"
+                    strokeWidth={2 / v.zoom}
+                    draggable
+                    onMouseDown={(ev) => (ev.cancelBubble = true)}
+                    onMouseEnter={(ev) => (ev.target.getStage()!.container().style.cursor = 'nwse-resize')}
+                    onMouseLeave={(ev) => (ev.target.getStage()!.container().style.cursor = '')}
+                    onDragMove={(ev) => setLenPrev(calc(ev.target.x() + 4 / v.zoom, ev.target.y() + 4 / v.zoom, ev.evt.shiftKey))}
+                    onDragEnd={(ev) => {
+                      const r = calc(ev.target.x() + 4 / v.zoom, ev.target.y() + 4 / v.zoom, ev.evt.shiftKey);
+                      setLenPrev(null);
+                      mutate((d) => {
+                        const x = d.floors.find((f) => f.id === floor.id)!.items.find((q) => q.id === it.id)!;
+                        x.len = Math.round(r.len);
+                        x.wid = Math.round(r.wid);
+                        x.x = r.x;
+                        x.y = r.y;
+                      });
+                    }}
+                  />
+                );
+              }
               const len = lenOf(it, c, sz, floor.mmPerPt);
               const th = (it.rot * Math.PI) / 180, ux = Math.cos(th), uy = Math.sin(th);
               const cur = lenPrev && lenPrev.id === it.id ? lenPrev : { len, x: it.x, y: it.y };
@@ -808,7 +860,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
             />
             {ghost && cursor && (
               <Group x={cursor.x} y={cursor.y} opacity={0.55} listening={false}>
-                <SymbolShape kind={ghost.symbol} color={ghost.color} size={sz} half={ghost.symbol === 'profile' ? halfUnits(ghost.defaultLen ?? 1200, floor.mmPerPt, sz) : undefined} />
+                <SymbolShape kind={ghost.symbol} color={ghost.color} size={sz} half={ghost.symbol === 'profile' || ghost.symbol === 'loop' ? halfUnits(ghost.defaultLen ?? (ghost.symbol === 'loop' ? 3000 : 1200), floor.mmPerPt, sz) : undefined} halfW={ghost.symbol === 'loop' ? halfUnits(ghost.defaultWid ?? 2000, floor.mmPerPt, sz) : undefined} />
               </Group>
             )}
 
@@ -850,7 +902,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
         const c = lib.get(it.code) ?? unknownComponent(it.code);
         const room = roomAt(floor, it.x, it.y);
         const left = it.x * v.zoom + v.x + 16, top = it.y * v.zoom + v.y + 16;
-        const len = c.symbol === 'profile' || (isStretchy(c.symbol) && it.len) ? (lenOf(it, c, sz, floor.mmPerPt) / 1000).toFixed(1) + ' m' : null;
+        const len = c.symbol === 'loop' ? `${(lenOf(it, c, sz, floor.mmPerPt) / 1000).toFixed(1)} × ${(widOf(it, c) / 1000).toFixed(1)} m (${metresOf(it, c).toFixed(1)} m run)` : c.symbol === 'profile' || (isStretchy(c.symbol) && it.len) ? (lenOf(it, c, sz, floor.mmPerPt) / 1000).toFixed(1) + ' m' : null;
         return (
           <div className="item-card" style={{ left: Math.min(left, size.w - 290), top: Math.min(top, size.h - 150) }}>
             <div className="item-card-head">

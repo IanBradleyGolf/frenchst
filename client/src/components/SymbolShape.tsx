@@ -2,10 +2,10 @@ import { Circle, Line, Rect, Text } from 'react-konva';
 import { primsFor } from '../symbols';
 import type { SymbolKind } from '../types';
 
-export function SymbolShape({ kind, color, size, half }: { kind: SymbolKind; color: string; size: number; half?: number }) {
+export function SymbolShape({ kind, color, size, half, halfW }: { kind: SymbolKind; color: string; size: number; half?: number; halfW?: number }) {
   return (
     <>
-      {primsFor(kind, half).map((p, i) => {
+      {primsFor(kind, half, halfW).map((p, i) => {
         switch (p.t) {
           case 'circle':
             return p.fill ? (
@@ -25,7 +25,7 @@ export function SymbolShape({ kind, color, size, half }: { kind: SymbolKind; col
                 key={i}
                 points={p.pts.map((v) => v * size)}
                 closed={p.closed || p.fill}
-                fill={p.fill ? color : p.closed ? 'rgba(255,255,255,0.85)' : undefined}
+                fill={p.fill ? color : p.closed && !p.hollow ? 'rgba(255,255,255,0.85)' : undefined}
                 stroke={p.fill ? undefined : color}
                 strokeWidth={(p.w ?? 0.18) * size}
                 dash={p.dash?.map((d) => d * size)}

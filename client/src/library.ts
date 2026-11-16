@@ -26,6 +26,7 @@ export const DEFAULT_LIBRARY: Component[] = [
   // LED profiles
   { code: 'LED1', name: 'LED profile, medium (G04) – per section', category: 'LED strips', symbol: 'strip', color: '#ca8a04', control: 'DALI', supplier: L, supplyRate: 82, installRate: 150 },
   { code: 'LED2', name: '45° LED profile (G06) – per section', category: 'LED strips', symbol: 'strip', color: '#a16207', control: 'DALI', supplier: L, supplyRate: 82, installRate: 150 },
+  { code: 'LED2R', name: 'LED profile around ceiling recess, 45° (G06) – per metre', category: 'LED strips', symbol: 'loop', color: '#059669', control: 'DALI', supplier: L, supplyRate: 0, installRate: 0, defaultLen: 3000, defaultWid: 2000, notes: 'The LED2 45° profile run around the perimeter of a ceiling recess (coffer), as drawn in green on the Switch plans. Schedule counts the perimeter in metres.' },
   { code: 'LED3', name: 'Wall-washer LED profile, IP (G018) – per section', category: 'LED strips', symbol: 'strip', color: '#854d0e', control: 'DALI', supplier: L, supplyRate: 200, installRate: 150 },
   // Low level / external
   { code: 'LL1', name: 'Inset low-level light (Hush Mini Round)', category: 'Low-level & external', symbol: 'lowlevel', color: '#0f766e', control: 'DALI', supplier: L, supplyRate: 197, installRate: 135 },
@@ -81,7 +82,7 @@ export const DEFAULT_LIBRARY: Component[] = [
 
 export const SYMBOL_KINDS: Component['symbol'][] = [
   'downlight', 'pinlight', 'adjustable', 'wall', 'pendant', 'linear', 'strip', 'lowlevel', 'uplight', 'spike', 'spot', 'panel', 'surface', 'fan',
-  'keypad', 'sensor', 'pushbutton', 'pirswitch', 'occsensor', 'switch', 'contact', 'profile', 'driver', 'rack', 'alarm', 'access', 'strike', 'doorctl', 'soundbar', 'sub', 'touchscreen', 'gpo', 'usb', 'gpo-wp', 'data', 'tv', 'wap', 'camera', 'intercom', 'speaker', 'exhaust', 'towel', 'smoke', 'circuit', 'generic',
+  'keypad', 'sensor', 'loop', 'pushbutton', 'pirswitch', 'occsensor', 'switch', 'contact', 'profile', 'driver', 'rack', 'alarm', 'access', 'strike', 'doorctl', 'soundbar', 'sub', 'touchscreen', 'gpo', 'usb', 'gpo-wp', 'data', 'tv', 'wap', 'camera', 'intercom', 'speaker', 'exhaust', 'towel', 'smoke', 'circuit', 'generic',
 ];
 
 export const CONTROLS: Component['control'][] = ['DALI', 'DALI relay', 'Phase dim', 'On/off', 'Control device', 'Power', 'Low voltage', 'Other'];
