@@ -102,9 +102,24 @@ export function halfUnits(lenMm: number, mmPerPt: number | undefined, size: numb
 
 /** Primitives for a symbol; a 'profile' is stretched to the given half-length (symbol units). */
 export function primsFor(kind: SymbolKind, half?: number): Prim[] {
+  if (kind === 'linear' && half) return [{ t: 'rect', x: -half, y: -0.35, w: half * 2, h: 0.7, fill: true }];
+  if (kind === 'strip' && half) return [{ t: 'rect', x: -half, y: -0.22, w: half * 2, h: 0.44, fill: true }];
   if (kind !== 'profile' || !half) return SYMBOLS[kind];
   return [
     { t: 'rect', x: -half, y: -0.28, w: half * 2, h: 0.56, sw: 0.14 },
     { t: 'rect', x: -half + 0.15, y: -0.12, w: Math.max(0.1, half * 2 - 0.3), h: 0.24, fill: true },
   ];
+}
+
+/** Symbols that can be stretched to a length. */
+export function isStretchy(kind: SymbolKind) {
+  return kind === 'profile' || kind === 'linear' || kind === 'strip';
+}
+
+/** Length in mm of a stretchy item: its own length, the component default, or the plain symbol's drawn length. */
+export function lenOf(it: { len?: number }, c: { symbol: SymbolKind; defaultLen?: number }, size: number, mmPerPt: number | undefined) {
+  if (it.len) return it.len;
+  if (c.defaultLen) return c.defaultLen;
+  if (c.symbol === 'profile') return 1200;
+  return (c.symbol === 'strip' ? 3.6 : 3.2) * size * (mmPerPt || DEFAULT_MM_PER_PT); // drawn length of the plain symbol
 }

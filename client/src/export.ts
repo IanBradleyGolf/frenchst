@@ -5,7 +5,7 @@ import { PDFDocument, StandardFonts, rgb, degrees, type PDFPage, type PDFFont } 
 import { planBytes } from './pdf';
 import { pdfSafe } from './marks';
 import { byRoom, copiesOf, libraryMap, placedItems, totals, unknownComponent } from './schedule';
-import { halfUnits, primsFor } from './symbols';
+import { halfUnits, isStretchy, lenOf, primsFor } from './symbols';
 import { compareComponents } from './library';
 import type { Component, Floor, Project } from './types';
 
@@ -185,7 +185,7 @@ export async function exportPdf(project: Project, opts: { labels: boolean; rooms
     }
     for (const it of visible) {
       const c = lib.get(it.code) ?? unknownComponent(it.code);
-      drawSymbol(page, bold, c, it.x * s, it.y * s, it.rot, data.symbolSize * s, H, c.symbol === 'profile' ? halfUnits(it.len ?? c.defaultLen ?? 1200, floor.mmPerPt, data.symbolSize) : undefined);
+      drawSymbol(page, bold, c, it.x * s, it.y * s, it.rot, data.symbolSize * s, H, isStretchy(c.symbol) ? halfUnits(lenOf(it, c, data.symbolSize, floor.mmPerPt), floor.mmPerPt, data.symbolSize) : undefined);
       if (opts.labels && c.symbol === 'profile') {
         const txt = `${it.code} ${((it.len ?? c.defaultLen ?? 1200) / 1000).toFixed(1)} m${it.circuit ? ' ' + it.circuit : ''}`;
         const fs = data.symbolSize * s * 0.95;

@@ -12,7 +12,7 @@ import { createRoom } from '../rooms';
 import { isVisible } from '../layers';
 import { addText } from '../marks';
 import { openQuestions } from './RoomNotes';
-import { DEFAULT_MM_PER_PT, halfUnits } from '../symbols';
+import { DEFAULT_MM_PER_PT, halfUnits, isStretchy, lenOf } from '../symbols';
 import { bendFor, circuitColor, circuitLinks, circuitsOf, wireGeom, wireTogether } from '../circuits';
 
 const RENDER_SCALE = 3;
@@ -637,9 +637,10 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
               const c = lib.get(it.code) ?? unknownComponent(it.code);
               const sel = selectedIds.has(it.id);
               const off = drag && sel && drag.id !== it.id ? drag : null;
-              const half = c.symbol === 'profile' ? halfUnits((lenPrev && lenPrev.id === it.id ? lenPrev.len : it.len) ?? c.defaultLen ?? 1200, floor.mmPerPt, sz) : undefined;
+              const lenMm = isStretchy(c.symbol) ? (lenPrev && lenPrev.id === it.id ? lenPrev.len : lenOf(it, c, sz, floor.mmPerPt)) : 0;
+              const half = lenMm ? halfUnits(lenMm, floor.mmPerPt, sz) : undefined;
               const ext = half ? half * sz : (EXTENT[c.symbol] ?? 1) * sz;
-              const lenTxt = half ? ` ${(((lenPrev && lenPrev.id === it.id ? lenPrev.len : it.len) ?? c.defaultLen ?? 1200) / 1000).toFixed(1)}m` : '';
+              const lenTxt = half && (c.symbol === 'profile' || it.len || (lenPrev && lenPrev.id === it.id)) ? ` ${(lenMm / 1000).toFixed(1)}m` : '';
               return (
                 <Group
                   key={it.id}
@@ -668,9 +669,9 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
             {tool === 'select' && selection.kind === 'items' && selection.ids.length === 1 && !rotPrev && (() => {
               const it = shown.find((i) => i.id === selection.ids[0]);
               const c = it && lib.get(it.code);
-              if (!it || !c || c.symbol !== 'profile') return null;
+              if (!it || !c || !isStretchy(c.symbol)) return null;
               const mpp = floor.mmPerPt || DEFAULT_MM_PER_PT;
-              const len = it.len ?? c.defaultLen ?? 1200;
+              const len = lenOf(it, c, sz, floor.mmPerPt);
               const th = (it.rot * Math.PI) / 180, ux = Math.cos(th), uy = Math.sin(th);
               const cur = lenPrev && lenPrev.id === it.id ? lenPrev : { len, x: it.x, y: it.y };
               const halfPt = cur.len / mpp / 2;
@@ -715,7 +716,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
               const anchor = shown.find((i) => i.id === selection.ids[selection.ids.length - 1]);
               if (!anchor) return null;
               const c = lib.get(anchor.code) ?? unknownComponent(anchor.code);
-              const r = (c.symbol === 'profile' ? sz : Math.max((EXTENT[c.symbol] ?? 1) * sz, sz)) + 14 / v.zoom;
+              const r = (isStretchy(c.symbol) ? sz : Math.max((EXTENT[c.symbol] ?? 1) * sz, sz)) + 14 / v.zoom;
               const ang = ((anchor.rot + (rotPrev?.delta ?? 0) - 90) * Math.PI) / 180;
               const hx = anchor.x + Math.cos(ang) * r, hy = anchor.y + Math.sin(ang) * r;
               return (
@@ -849,7 +850,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
         const c = lib.get(it.code) ?? unknownComponent(it.code);
         const room = roomAt(floor, it.x, it.y);
         const left = it.x * v.zoom + v.x + 16, top = it.y * v.zoom + v.y + 16;
-        const len = c.symbol === 'profile' ? ((it.len ?? c.defaultLen ?? 1200) / 1000).toFixed(1) + ' m' : null;
+        const len = c.symbol === 'profile' || (isStretchy(c.symbol) && it.len) ? (lenOf(it, c, sz, floor.mmPerPt) / 1000).toFixed(1) + ' m' : null;
         return (
           <div className="item-card" style={{ left: Math.min(left, size.w - 290), top: Math.min(top, size.h - 150) }}>
             <div className="item-card-head">
