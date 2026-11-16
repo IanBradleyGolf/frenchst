@@ -12,7 +12,7 @@ import { createRoom } from '../rooms';
 import { isVisible } from '../layers';
 import { addText } from '../marks';
 import { openQuestions } from './RoomNotes';
-import { DEFAULT_MM_PER_PT, halfUnits, isStretchy, lenOf, metresOf, widOf } from '../symbols';
+import { DEFAULT_MM_PER_PT, halfUnits, isStretchy, lenOf, widOf } from '../symbols';
 import { bendFor, circuitColor, circuitLinks, circuitsOf, wireGeom, wireTogether } from '../circuits';
 
 const RENDER_SCALE = 3;
@@ -645,7 +645,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
               const ext = half ? half * sz : (EXTENT[c.symbol] ?? 1) * sz;
               const extY = halfW ? halfW * sz : sz;
               const lenTxt = isLoop
-                ? ` ${(lenMm / 1000).toFixed(1)}×${(widMm / 1000).toFixed(1)}m`
+                ? '' // size is indicative only; not shown
                 : half && (c.symbol === 'profile' || it.len || (lenPrev && lenPrev.id === it.id)) ? ` ${(lenMm / 1000).toFixed(1)}m` : '';
               return (
                 <Group
@@ -902,7 +902,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
         const c = lib.get(it.code) ?? unknownComponent(it.code);
         const room = roomAt(floor, it.x, it.y);
         const left = it.x * v.zoom + v.x + 16, top = it.y * v.zoom + v.y + 16;
-        const len = c.symbol === 'loop' ? `${(lenOf(it, c, sz, floor.mmPerPt) / 1000).toFixed(1)} × ${(widOf(it, c) / 1000).toFixed(1)} m (${metresOf(it, c).toFixed(1)} m run)` : c.symbol === 'profile' || (isStretchy(c.symbol) && it.len) ? (lenOf(it, c, sz, floor.mmPerPt) / 1000).toFixed(1) + ' m' : null;
+        const len = c.symbol === 'loop' ? null : c.symbol === 'profile' || (isStretchy(c.symbol) && it.len) ? (lenOf(it, c, sz, floor.mmPerPt) / 1000).toFixed(1) + ' m' : null;
         return (
           <div className="item-card" style={{ left: Math.min(left, size.w - 290), top: Math.min(top, size.h - 150) }}>
             <div className="item-card-head">
