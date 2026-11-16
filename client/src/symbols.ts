@@ -7,7 +7,7 @@ import type { SymbolKind } from './types';
 export type Prim =
   | { t: 'circle'; cx: number; cy: number; r: number; fill?: boolean; w?: number }
   | { t: 'rect'; x: number; y: number; w: number; h: number; fill?: boolean; sw?: number }
-  | { t: 'poly'; pts: number[]; fill?: boolean; closed?: boolean; w?: number }
+  | { t: 'poly'; pts: number[]; fill?: boolean; closed?: boolean; w?: number; dash?: number[] }
   | { t: 'text'; x: number; y: number; s: string; size: number };
 
 const ring = (r = 1, w = 0.18): Prim => ({ t: 'circle', cx: 0, cy: 0, r, w });
@@ -21,7 +21,7 @@ export const SYMBOLS: Record<SymbolKind, Prim[]> = {
   wall: [{ t: 'poly', pts: [-1, 0.4, 1, 0.4, 0, -0.9], fill: true, closed: true }],
   pendant: [ring(), { t: 'poly', pts: [-0.7, -0.7, 0.7, 0.7], w: 0.18 }, { t: 'poly', pts: [-0.7, 0.7, 0.7, -0.7], w: 0.18 }],
   linear: [{ t: 'rect', x: -1.6, y: -0.35, w: 3.2, h: 0.7, fill: true }],
-  strip: [{ t: 'rect', x: -1.8, y: -0.22, w: 3.6, h: 0.44, fill: true }],
+  strip: [{ t: 'poly', pts: [-1.8, 0, 1.8, 0], w: 0.4, dash: [0.6, 0.35] }],
   lowlevel: [{ t: 'rect', x: -0.8, y: -0.5, w: 1.6, h: 1, sw: 0.18 }, { t: 'rect', x: -0.8, y: 0.1, w: 1.6, h: 0.4, fill: true }],
   uplight: [ring(0.8), { t: 'poly', pts: [-0.5, 0.3, 0, -0.5, 0.5, 0.3], w: 0.18 }],
   spike: [{ t: 'poly', pts: [-0.9, 0.8, 0.9, 0.8, 0, -1], closed: true, w: 0.2 }, dot(0.3)],
@@ -83,7 +83,7 @@ export function svgFor(kind: SymbolKind, color: string, size = 22): string {
         const tag = p.closed || p.fill ? 'polygon' : 'polyline';
         return p.fill
           ? `<${tag} points="${pts.join(' ')}" fill="${color}"/>`
-          : `<${tag} points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="${p.w ?? 0.18}" stroke-linejoin="round"/>`;
+          : `<${tag} points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="${p.w ?? 0.18}" stroke-linejoin="round"${p.dash ? ` stroke-dasharray="${p.dash.join(' ')}"` : ''}/>`;
       }
       case 'text':
         return `<text x="${p.x}" y="${p.y}" font-size="${p.size}" font-family="IBM Plex Mono, monospace" font-weight="600" text-anchor="middle" dominant-baseline="central" fill="${color}">${p.s}</text>`;
@@ -103,7 +103,7 @@ export function halfUnits(lenMm: number, mmPerPt: number | undefined, size: numb
 /** Primitives for a symbol; a 'profile' is stretched to the given half-length (symbol units). */
 export function primsFor(kind: SymbolKind, half?: number): Prim[] {
   if (kind === 'linear' && half) return [{ t: 'rect', x: -half, y: -0.35, w: half * 2, h: 0.7, fill: true }];
-  if (kind === 'strip' && half) return [{ t: 'rect', x: -half, y: -0.22, w: half * 2, h: 0.44, fill: true }];
+  if (kind === 'strip' && half) return [{ t: 'poly', pts: [-half, 0, half, 0], w: 0.4, dash: [0.6, 0.35] }];
   if (kind !== 'profile' || !half) return SYMBOLS[kind];
   return [
     { t: 'rect', x: -half, y: -0.28, w: half * 2, h: 0.56, sw: 0.14 },

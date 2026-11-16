@@ -28,8 +28,9 @@ export function SymbolShape({ kind, color, size, half }: { kind: SymbolKind; col
                 fill={p.fill ? color : p.closed ? 'rgba(255,255,255,0.85)' : undefined}
                 stroke={p.fill ? undefined : color}
                 strokeWidth={(p.w ?? 0.18) * size}
+                dash={p.dash?.map((d) => d * size)}
                 lineJoin="round"
-                lineCap="round"
+                lineCap={p.dash ? 'butt' : 'round'}
               />
             );
           case 'text': {

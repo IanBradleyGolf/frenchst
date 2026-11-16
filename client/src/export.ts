@@ -129,6 +129,7 @@ function drawSymbol(page: PDFPage, font: PDFFont, comp: Component, x: number, y:
         opacity: fill ? 1 : 0.85,
         borderColor: fill ? undefined : color,
         borderWidth: fill ? 0 : sw * size,
+        borderDashArray: p.t === 'poly' && p.dash ? p.dash.map((d) => d * size) : undefined,
       });
     } else if (p.t === 'text') {
       const fs = p.size * size;
