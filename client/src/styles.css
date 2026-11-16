@@ -239,3 +239,5 @@ details summary { cursor: pointer; color: var(--ink-2); }
 .item-card-desc { color: #475569; }
 .tbl tr.clickable { cursor: pointer; }
 .tbl tr.clickable:hover td { background: #f8fafc; }
+
+.tiny { font-size: 10px; line-height: 1.2; white-space: nowrap; }

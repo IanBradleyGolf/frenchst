@@ -911,6 +911,9 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
             <div className="item-card-meta">
               {[c.category, c.control, len, it.circuit && `circuit ${it.circuit}`, room && room.name].filter(Boolean).join(' · ')}
             </div>
+            <div className="item-card-meta">
+              Supply ${c.supplyRate} + install ${c.installRate} = <b style={{ color: '#0f172a' }}>${c.supplyRate + c.installRate}</b>{c.symbol === 'profile' || c.symbol === 'loop' ? ' per metre' : ' each'}
+            </div>
             {it.note && <div className="item-card-note">{it.note}</div>}
             {c.notes && <div className="item-card-desc">{c.notes.length > 180 ? c.notes.slice(0, 177) + '…' : c.notes}</div>}
           </div>

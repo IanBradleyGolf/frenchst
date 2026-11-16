@@ -476,13 +476,17 @@ function Schedule() {
       ) : view === 'totals' ? (
         <table className="tbl">
           <thead>
-            <tr><th></th><th>Code</th><th className="num">Per dw.</th><th className="num">×{n} qty</th><th className="num">Supply</th><th className="num">Install</th><th className="num">Total</th></tr>
+            <tr><th></th><th>Code</th><th className="num" title="Supply + install for one (per metre for linear profiles)">Each</th><th className="num">Per dw.</th><th className="num">×{n} qty</th><th className="num">Supply</th><th className="num">Install</th><th className="num">Total</th></tr>
           </thead>
           <tbody>
             {tot.map((l) => (
               <tr key={l.component.code} title={`${l.component.name} — click to see which rooms`} className="clickable" onClick={() => { setWhereCode(l.component.code); setView('where'); }}>
                 <td><span dangerouslySetInnerHTML={{ __html: svgFor(l.component.symbol, l.component.color, 16) }} /></td>
                 <td className="mono">{l.component.code}</td>
+                <td className="num" title={`Supply ${money(l.component.supplyRate)} + install ${money(l.component.installRate)}${l.component.symbol === 'profile' || l.component.symbol === 'loop' ? ' per metre' : ' each'}`}>
+                  <b>{money(l.component.supplyRate + l.component.installRate)}</b>{l.component.symbol === 'profile' || l.component.symbol === 'loop' ? <span className="muted">/m</span> : null}
+                  <div className="muted tiny">{money(l.component.supplyRate)} + {money(l.component.installRate)}</div>
+                </td>
                 <td className="num">{l.qty}</td>
                 <td className="num">{l.qty * n}</td>
                 <td className="num">{money(l.supply * n)}</td>
@@ -490,11 +494,11 @@ function Schedule() {
                 <td className="num">{money(l.total * n)}</td>
               </tr>
             ))}
-            {tot.length === 0 && <tr><td colSpan={7} className="muted">Nothing placed yet.</td></tr>}
+            {tot.length === 0 && <tr><td colSpan={8} className="muted">Nothing placed yet.</td></tr>}
           </tbody>
           {tot.length > 0 && (
             <tfoot>
-              <tr><td></td><td>Total</td><td className="num">{sum('qty')}</td><td className="num">{sum('qty') * n}</td><td className="num">{money(sum('supply') * n)}</td><td className="num">{money(sum('install') * n)}</td><td className="num">{money(sum('total') * n)}</td></tr>
+              <tr><td></td><td>Total</td><td></td><td className="num">{sum('qty')}</td><td className="num">{sum('qty') * n}</td><td className="num">{money(sum('supply') * n)}</td><td className="num">{money(sum('install') * n)}</td><td className="num">{money(sum('total') * n)}</td></tr>
             </tfoot>
           )}
         </table>

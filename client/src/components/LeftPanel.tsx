@@ -182,7 +182,7 @@ export function LeftPanel() {
               </button>
               {(q !== '' || !col.is('cat:' + cat)) && list.map((c) => (
                 <div key={c.code} className={`lib-item ${tool === 'place' && activeCode === c.code ? 'active' : ''}`}>
-                  <button className="lib-pick" onClick={() => setActiveCode(tool === 'place' && activeCode === c.code ? null : c.code)} title={`Place ${c.code}`}>
+                  <button className="lib-pick" onClick={() => setActiveCode(tool === 'place' && activeCode === c.code ? null : c.code)} title={`Place ${c.code} – ${c.name}\nSupply $${c.supplyRate} + install $${c.installRate} = $${c.supplyRate + c.installRate}${c.symbol === 'profile' || c.symbol === 'loop' ? ' per metre' : ' each'}`}>
                     <span className="lib-sym" dangerouslySetInnerHTML={{ __html: svgFor(c.symbol, c.color, 22) }} />
                     <span className="lib-code">{c.code}</span>
                     <span className="lib-name">{c.name}</span>
