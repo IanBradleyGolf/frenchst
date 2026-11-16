@@ -34,7 +34,7 @@ export const DEFAULT_LIBRARY: Component[] = [
   { code: 'UP1', name: 'Inset uplighter (Hush Mini Round)', category: 'Low-level & external', symbol: 'uplight', color: '#0f766e', control: 'DALI', supplier: L, supplyRate: 197, installRate: 135 },
   { code: 'GS1', name: 'Garden spike (Titan Spike)', category: 'Low-level & external', symbol: 'spike', color: '#15803d', control: 'DALI relay', supplier: L, supplyRate: 169, installRate: 180 },
   { code: 'LP', name: 'LED panel light', category: 'Low-level & external', symbol: 'panel', color: '#475569', control: 'DALI', supplier: L, supplyRate: 184, installRate: 135 },
-  { code: 'FAN', name: 'Ceiling fan (wiring)', category: 'Low-level & external', symbol: 'fan', color: '#334155', control: 'Phase dim', supplier: E, supplyRate: 0, installRate: 135 },
+  { code: 'FAN', name: 'Ceiling fan (wiring + fan controller)', category: 'Fans & heating', symbol: 'fan', color: '#334155', control: 'Phase dim', supplier: E, supplyRate: 0, installRate: 135 },
   // Control
   { code: 'SWL', name: 'Light switch, on/off (same range as the house)', category: 'Control', symbol: 'switch', color: '#7c3aed', control: 'On/off', supplier: E, supplyRate: 0, installRate: 0, notes: 'Conventional 240V switch mechanism. Use 2 or 3 gang plates where several circuits share a spot (e.g. lights + exhaust fan).' },
   { code: 'KP', name: 'Lighting keypad', category: 'Control', symbol: 'keypad', color: '#9333ea', control: 'Control device', supplier: A, supplyRate: 467, installRate: 120 },
@@ -52,8 +52,8 @@ export const DEFAULT_LIBRARY: Component[] = [
   { code: 'USBC', name: 'Double power point with USB-C', category: 'Power', symbol: 'usb', color: '#b91c1c', control: 'Power', supplier: E, supplyRate: 0, installRate: 295 },
   { code: 'GPO-WP', name: 'Weatherproof double power point', category: 'Power', symbol: 'gpo-wp', color: '#7f1d1d', control: 'Power', supplier: E, supplyRate: 0, installRate: 210 },
   { code: 'GPO-FL', name: 'Floor power point (double, in-floor box)', category: 'Power', symbol: 'gpo', color: '#c2410c', control: 'Power', supplier: E, supplyRate: 0, installRate: 0, notes: 'Recessed floor box with a double outlet, set into the slab/floor finish. Position to suit the furniture layout.' },
-  { code: 'EXF', name: 'Exhaust fan (wiring)', category: 'Power', symbol: 'exhaust', color: '#57534e', control: 'On/off', supplier: E, supplyRate: 0, installRate: 165 },
-  { code: 'HTR', name: 'Heated towel rail circuit', category: 'Power', symbol: 'towel', color: '#9a3412', control: 'On/off', supplier: E, supplyRate: 0, installRate: 180 },
+  { code: 'EXF', name: 'Exhaust fan (wiring)', category: 'Fans & heating', symbol: 'exhaust', color: '#57534e', control: 'On/off', supplier: E, supplyRate: 0, installRate: 165 },
+  { code: 'HTR', name: 'Heated towel rail circuit', category: 'Fans & heating', symbol: 'towel', color: '#9a3412', control: 'On/off', supplier: E, supplyRate: 0, installRate: 180 },
   { code: 'CCT', name: 'Dedicated circuit (appliance, EV, pool…)', category: 'Power', symbol: 'circuit', color: '#991b1b', control: 'Power', supplier: E, supplyRate: 0, installRate: 400 },
   { code: 'SMK', name: 'Smoke alarm 240V', category: 'Power', symbol: 'smoke', color: '#44403c', control: 'Power', supplier: E, supplyRate: 0, installRate: 450 },
   // Data / AV / security
@@ -98,7 +98,10 @@ export function newProjectData(): ProjectData {
 }
 
 /** Category display order; anything else follows alphabetically. */
-export const CATEGORY_ORDER = ['Downlights', 'Wall lights & pendants', 'LED strips', 'Linear & battens', 'Low-level & external', 'Control', 'Power', 'Data, AV & security'];
+export const CATEGORY_ORDER = ['Downlights', 'Wall lights & pendants', 'LED strips', 'Linear & battens', 'Low-level & external', 'Fans & heating', 'Control', 'Power', 'Data, AV & security'];
+
+/** Standard components that moved category: code -> [old, new]. Projects still on the old one are moved. */
+export const CATEGORY_MOVES: Record<string, [string, string]> = { FAN: ['Low-level & external', 'Fans & heating'], EXF: ['Power', 'Fans & heating'], HTR: ['Power', 'Fans & heating'] };
 
 const natural = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
 

@@ -4,7 +4,7 @@ import { useStore } from './store';
 import { ProjectList } from './components/ProjectList';
 import { Editor } from './components/Editor';
 import { UpdateBanner } from './components/UpdateBanner';
-import { DEFAULT_LIBRARY } from './library';
+import { CATEGORY_MOVES, DEFAULT_LIBRARY } from './library';
 import type { ProjectData } from './types';
 
 function readHash() {
@@ -49,9 +49,11 @@ function Main() {
         const have = new Set(p.data.library.map((c) => c.code));
         const seen = new Set(p.data.stdSeen ?? []);
         const fresh = DEFAULT_LIBRARY.filter((c) => !have.has(c.code) && !seen.has(c.code));
-        if (fresh.length || DEFAULT_LIBRARY.some((c) => !seen.has(c.code))) {
+        const moves = p.data.library.filter((c) => CATEGORY_MOVES[c.code]?.[0] === c.category);
+        if (fresh.length || moves.length || DEFAULT_LIBRARY.some((c) => !seen.has(c.code))) {
           useStore.getState().mutate((d) => {
             d.library.push(...structuredClone(fresh));
+            for (const c of d.library) if (CATEGORY_MOVES[c.code]?.[0] === c.category) c.category = CATEGORY_MOVES[c.code][1];
             d.stdSeen = DEFAULT_LIBRARY.map((c) => c.code);
           });
         }

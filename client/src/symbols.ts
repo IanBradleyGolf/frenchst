@@ -28,7 +28,7 @@ export const SYMBOLS: Record<SymbolKind, Prim[]> = {
   spot: [ring(0.75), { t: 'poly', pts: [0.6, -0.2, 1.4, -0.7, 1.4, 0.3], fill: true, closed: true }],
   panel: [{ t: 'rect', x: -1, y: -1, w: 2, h: 2, sw: 0.18 }, { t: 'poly', pts: [-1, -1, 1, 1], w: 0.12 }, { t: 'poly', pts: [-1, 1, 1, -1], w: 0.12 }],
   surface: [ring(), ring(0.55, 0.14)],
-  fan: [ring(), label('F', 1.1)],
+  fan: [ring(), dot(0.2), { t: 'poly', pts: [0.00, -0.22, 0.00, -0.82], w: 0.32 }, { t: 'poly', pts: [-0.19, 0.11, -0.71, 0.41], w: 0.32 }, { t: 'poly', pts: [0.19, 0.11, 0.71, 0.41], w: 0.32 }],
   keypad: [{ t: 'rect', x: -0.8, y: -1, w: 1.6, h: 2, fill: true }, { t: 'rect', x: -0.45, y: -0.65, w: 0.9, h: 0.35, fill: false, sw: 0.12 }],
   sensor: [ring(), label('MS', 0.8)],
   touchscreen: [{ t: 'rect', x: -1.1, y: -0.8, w: 2.2, h: 1.6, sw: 0.18 }, label('TS', 0.8)],
