@@ -56,6 +56,7 @@ export const DEFAULT_LIBRARY: Component[] = [
   { code: 'EXF', name: 'Exhaust fan (wiring)', category: 'Fans & heating', symbol: 'exhaust', color: '#57534e', control: 'On/off', supplier: E, supplyRate: 0, installRate: 165 },
   { code: 'HTR', name: 'Heated towel rail circuit', category: 'Fans & heating', symbol: 'towel', color: '#9a3412', control: 'On/off', supplier: E, supplyRate: 0, installRate: 180 },
   { code: 'CCT', name: 'Dedicated circuit (appliance, EV, pool…)', category: 'Power', symbol: 'circuit', color: '#991b1b', control: 'Power', supplier: E, supplyRate: 0, installRate: 400 },
+  { code: 'EVC', name: 'EV charger circuit, 32A single-phase, terminated at isolation switch', category: 'Power', symbol: 'ev', color: '#15803d', control: 'Power', supplier: E, supplyRate: 0, installRate: 0, notes: 'Dedicated 32A circuit from the switchboard on its own breaker/RCD, run to a lockable 32A isolation switch at the charger position. Charger itself supplied and fitted later. Cable sized for the run length; isolator weatherproof (IP66) if exposed.' },
   { code: 'SMK', name: 'Smoke alarm 240V', category: 'Power', symbol: 'smoke', color: '#44403c', control: 'Power', supplier: E, supplyRate: 0, installRate: 450 },
   // Data / AV / security
   { code: 'DATA', name: 'Data point (CAT6)', category: 'Data, AV & security', symbol: 'data', color: '#0369a1', control: 'Low voltage', supplier: E, supplyRate: 0, installRate: 165 },
@@ -82,7 +83,7 @@ export const DEFAULT_LIBRARY: Component[] = [
 
 export const SYMBOL_KINDS: Component['symbol'][] = [
   'downlight', 'pinlight', 'adjustable', 'wall', 'pendant', 'linear', 'strip', 'lowlevel', 'uplight', 'spike', 'spot', 'panel', 'surface', 'fan',
-  'keypad', 'sensor', 'loop', 'pushbutton', 'pirswitch', 'occsensor', 'switch', 'contact', 'profile', 'driver', 'rack', 'alarm', 'access', 'strike', 'doorctl', 'soundbar', 'sub', 'touchscreen', 'gpo', 'usb', 'gpo-wp', 'data', 'tv', 'wap', 'camera', 'intercom', 'speaker', 'exhaust', 'towel', 'smoke', 'circuit', 'generic',
+  'keypad', 'sensor', 'loop', 'pushbutton', 'pirswitch', 'occsensor', 'switch', 'contact', 'profile', 'driver', 'rack', 'alarm', 'access', 'strike', 'doorctl', 'soundbar', 'sub', 'touchscreen', 'gpo', 'usb', 'gpo-wp', 'data', 'tv', 'wap', 'camera', 'intercom', 'speaker', 'exhaust', 'towel', 'smoke', 'circuit', 'ev', 'generic',
 ];
 
 export const CONTROLS: Component['control'][] = ['DALI', 'DALI relay', 'Phase dim', 'On/off', 'Control device', 'Power', 'Low voltage', 'Other'];

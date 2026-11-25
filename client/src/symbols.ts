@@ -44,6 +44,7 @@ export const SYMBOLS: Record<SymbolKind, Prim[]> = {
   exhaust: [ring(), label('EF', 0.8)],
   towel: [{ t: 'rect', x: -1, y: -0.7, w: 2, h: 1.4, sw: 0.18 }, label('HT', 0.7)],
   smoke: [ring(), label('S', 1)],
+  ev: [{ t: 'rect', x: -1, y: -1, w: 2, h: 2, sw: 0.18 }, label('EV', 0.8)],
   circuit: [{ t: 'poly', pts: [0, -1, 1, 0, 0, 1, -1, 0], closed: true, w: 0.18 }, label('C', 0.8)],
   rack: [{ t: 'rect', x: -1.1, y: -1.1, w: 2.2, h: 2.2, sw: 0.22 }, { t: 'rect', x: -0.8, y: -0.8, w: 1.6, h: 1.6, sw: 0.1 }, label('RACK', 0.45)],
   profile: [{ t: 'rect', x: -1.8, y: -0.28, w: 3.6, h: 0.56, sw: 0.14 }, { t: 'rect', x: -1.65, y: -0.12, w: 3.3, h: 0.24, fill: true }],
