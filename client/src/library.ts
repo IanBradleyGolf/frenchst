@@ -57,6 +57,7 @@ export const DEFAULT_LIBRARY: Component[] = [
   { code: 'HTR', name: 'Heated towel rail circuit', category: 'Fans & heating', symbol: 'towel', color: '#9a3412', control: 'On/off', supplier: E, supplyRate: 0, installRate: 180 },
   { code: 'CCT', name: 'Dedicated circuit (appliance, EV, pool…)', category: 'Power', symbol: 'circuit', color: '#991b1b', control: 'Power', supplier: E, supplyRate: 0, installRate: 400 },
   { code: 'EVC', name: 'EV charger circuit, 32A single-phase, terminated at isolation switch', category: 'Power', symbol: 'ev', color: '#15803d', control: 'Power', supplier: E, supplyRate: 0, installRate: 0, notes: 'Dedicated 32A circuit from the switchboard on its own breaker/RCD, run to a lockable 32A isolation switch at the charger position. Charger itself supplied and fitted later. Cable sized for the run length; isolator weatherproof (IP66) if exposed.' },
+  { code: 'MB', name: 'Meter box, galvanised (NSW), 3-phase metering, main switch and earthing system', category: 'Power', symbol: 'meterbox', color: '#374151', control: 'Power', supplier: E, supplyRate: 0, installRate: 0, notes: 'Galvanised steel meter enclosure to the NSW Service and Installation Rules and the local network (Ausgrid) requirements, with 3-phase meter panel, service fuses/meter protection device, main switch, and main earthing system (MEN link, main earth conductor and earth electrode). Meter itself is fitted by the electricity retailer\'s metering provider; service connection by a Level 2 ASP.' },
   { code: 'SMK', name: 'Smoke alarm 240V', category: 'Power', symbol: 'smoke', color: '#44403c', control: 'Power', supplier: E, supplyRate: 0, installRate: 450 },
   // Data / AV / security
   { code: 'DATA', name: 'Data point (CAT6)', category: 'Data, AV & security', symbol: 'data', color: '#0369a1', control: 'Low voltage', supplier: E, supplyRate: 0, installRate: 165 },
@@ -83,7 +84,7 @@ export const DEFAULT_LIBRARY: Component[] = [
 
 export const SYMBOL_KINDS: Component['symbol'][] = [
   'downlight', 'pinlight', 'adjustable', 'wall', 'pendant', 'linear', 'strip', 'lowlevel', 'uplight', 'spike', 'spot', 'panel', 'surface', 'fan',
-  'keypad', 'sensor', 'loop', 'pushbutton', 'pirswitch', 'occsensor', 'switch', 'contact', 'profile', 'driver', 'rack', 'alarm', 'access', 'strike', 'doorctl', 'soundbar', 'sub', 'touchscreen', 'gpo', 'usb', 'gpo-wp', 'data', 'tv', 'wap', 'camera', 'intercom', 'speaker', 'exhaust', 'towel', 'smoke', 'circuit', 'ev', 'generic',
+  'keypad', 'sensor', 'loop', 'pushbutton', 'pirswitch', 'occsensor', 'switch', 'contact', 'profile', 'driver', 'rack', 'alarm', 'access', 'strike', 'doorctl', 'soundbar', 'sub', 'touchscreen', 'gpo', 'usb', 'gpo-wp', 'data', 'tv', 'wap', 'camera', 'intercom', 'speaker', 'exhaust', 'towel', 'smoke', 'circuit', 'ev', 'meterbox', 'generic',
 ];
 
 export const CONTROLS: Component['control'][] = ['DALI', 'DALI relay', 'Phase dim', 'On/off', 'Control device', 'Power', 'Low voltage', 'Other'];

@@ -45,6 +45,7 @@ export type SymbolKind =
   | 'smoke'
   | 'circuit'
   | 'ev'
+  | 'meterbox'
   | 'generic';
 
 export type Control = 'DALI' | 'DALI relay' | 'Phase dim' | 'On/off' | 'Control device' | 'Power' | 'Low voltage' | 'Other';
