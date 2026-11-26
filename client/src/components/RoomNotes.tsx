@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useStore } from '../store';
 import { uid } from '../geometry';
 import type { Floor, Room, RoomNote } from '../types';
@@ -116,45 +116,3 @@ export function RoomNotes({ floor, room }: { floor: Floor; room: Room }) {
 }
 
 /** Every question and comment in the project, grouped by floor and room. */
-export function AllNotes() {
-  const data = useStore((s) => s.project!.data);
-  const { setFloor, select } = useStore.getState();
-  const [filter, setFilter] = useState<'open' | 'questions' | 'all'>('open');
-  const [who, setWho] = useState('');
-  const groups = useMemo(() => {
-    const out: { floor: Floor; room: Room; notes: RoomNote[] }[] = [];
-    for (const f of data.floors)
-      for (const r of f.rooms) {
-        const ns = (r.notes ?? []).filter((n) => (filter === 'all' ? true : filter === 'questions' ? n.kind === 'question' : n.kind === 'question' && n.status === 'open')).filter((n) => !who || n.for === who);
-        if (ns.length) out.push({ floor: f, room: r, notes: ns });
-      }
-    return out;
-  }, [data, filter, who]);
-  const fors = [...new Set(data.floors.flatMap((f) => f.rooms.flatMap((r) => (r.notes ?? []).map((n) => n.for).filter(Boolean) as string[])))];
-  const total = groups.reduce((a, g) => a + g.notes.length, 0);
-  return (
-    <div className="pad stack">
-      <div className="row gap wrap">
-        <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)} aria-label="Show">
-          <option value="open">Open questions</option>
-          <option value="questions">All questions</option>
-          <option value="all">Questions and comments</option>
-        </select>
-        <select value={who} onChange={(e) => setWho(e.target.value)} aria-label="For">
-          <option value="">Everyone</option>
-          {fors.map((f) => <option key={f}>{f}</option>)}
-        </select>
-        <span className="muted small">{total} shown</span>
-      </div>
-      {groups.map((g) => (
-        <div key={g.room.id} className="stack">
-          <button className="link-head" onClick={() => { setFloor(g.floor.id); select({ kind: 'room', id: g.room.id }); }} title="Open this room">
-            {g.floor.name} · <b>{g.room.name}</b>
-          </button>
-          {g.notes.map((n) => <NoteCard key={n.id} floorId={g.floor.id} room={g.room} n={n} />)}
-        </div>
-      ))}
-      {!groups.length && <p className="muted small">Nothing here. Add questions and comments from the Rooms tab: select a room, then use Questions & comments.</p>}
-    </div>
-  );
-}

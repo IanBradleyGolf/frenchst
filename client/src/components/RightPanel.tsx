@@ -11,26 +11,24 @@ import { deleteMark, updateText } from '../marks';
 import { compareComponents } from '../library';
 import { isStretchy, lenOf, metresOf, widOf } from '../symbols';
 import { ClearFloor } from './ClearFloor';
-import { AllNotes, RoomNotes, openQuestions } from './RoomNotes';
+import { RoomNotes, openQuestions } from './RoomNotes';
 
 export function RightPanel({ showLabels, setShowLabels, showRooms, setShowRooms, showWires, setShowWires }: { showLabels: boolean; setShowLabels: (v: boolean) => void; showRooms: boolean; setShowRooms: (v: boolean) => void; showWires: boolean; setShowWires: (v: boolean) => void }) {
   const tab = useStore((s) => s.rightTab);
   const { setRightTab } = useStore.getState();
   const floor = useFloor();
-  const openCount = useStore((s) => (s.project?.data.floors ?? []).reduce((a, f) => a + f.rooms.reduce((b, r) => b + openQuestions(r), 0), 0));
   return (
     <aside className="right">
       <nav className="tabs" role="tablist">
-        {(['properties', 'rooms', 'notes', 'schedule'] as const).map((t) => (
+        {(['properties', 'rooms', 'schedule'] as const).map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'sel' : ''} onClick={() => setRightTab(t)}>
-            {t === 'properties' ? 'Properties' : t === 'rooms' ? 'Rooms' : t === 'notes' ? <>Notes{openCount ? <span className="tab-badge">{openCount}</span> : null}</> : 'Schedule'}
+            {t === 'properties' ? 'Properties' : t === 'rooms' ? 'Rooms' : 'Schedule'}
           </button>
         ))}
       </nav>
       <div className="tab-body">
         {tab === 'properties' && (floor ? <Properties floor={floor} showLabels={showLabels} setShowLabels={setShowLabels} showRooms={showRooms} setShowRooms={setShowRooms} showWires={showWires} setShowWires={setShowWires} /> : <p className="muted pad">Add a floor to begin.</p>)}
         {tab === 'rooms' && (floor ? <Rooms floor={floor} /> : <p className="muted pad">Add a floor to begin.</p>)}
-        {tab === 'notes' && <AllNotes />}
         {tab === 'schedule' && <Schedule />}
       </div>
     </aside>
@@ -384,6 +382,7 @@ function Schedule() {
   const floorId = useStore((s) => s.floorId);
   const selection = useStore((s) => s.selection);
   const [picked, setPicked] = useState('');
+  const [view, setView] = useState<'room' | 'component'>('room');
 
   const items = useMemo(() => placedItems(data), [data]);
   // One entry per room, floor by floor, plus "not in a room" where a floor has loose items.
@@ -415,9 +414,60 @@ function Schedule() {
   }, [data, items, key]);
   const perMetre = (c: Component) => c.symbol === 'profile' || c.symbol === 'loop';
 
-  if (!keys.length) return <p className="muted pad">Draw a room on the plan to see its components here.</p>;
+  // Every placed component with its project total and the rooms it sits in.
+  const usage = useMemo(
+    () =>
+      totals(data, items).map((l) => {
+        const mine = items.filter((p) => p.code === l.component.code);
+        const rooms = data.floors.flatMap((f) => {
+          const here = mine.filter((p) => p.floor.id === f.id);
+          return [...new Set(here.map((p) => p.room))].map((room) => ({ floor: f.name, room, qty: totals(data, here.filter((p) => p.room === room))[0]?.qty ?? 0 }));
+        });
+        return { ...l, rooms };
+      }),
+    [data, items],
+  );
+
+  const toggle = (
+    <div className="seg">
+      <button className={view === 'room' ? 'sel' : ''} onClick={() => setView('room')}>By room</button>
+      <button className={view === 'component' ? 'sel' : ''} onClick={() => setView('component')}>By component</button>
+    </div>
+  );
+  if (view === 'component')
+    return (
+      <div className="pad stack">
+        {toggle}
+        <table className="tbl">
+          <thead>
+            <tr><th></th><th>Code</th><th>Component / room</th><th className="num">Qty</th></tr>
+          </thead>
+          {usage.map((u) => (
+            <tbody key={u.component.code}>
+              <tr className="comp-row">
+                <td><span dangerouslySetInnerHTML={{ __html: svgFor(u.component.symbol, u.component.color, 16) }} /></td>
+                <td className="mono">{u.component.code}</td>
+                <td>{u.component.name}</td>
+                <td className="num"><b>{u.qty}</b>{perMetre(u.component) ? <span className="muted"> m</span> : null}</td>
+              </tr>
+              {u.rooms.map((r) => (
+                <tr key={r.floor + r.room} className="room-row">
+                  <td></td>
+                  <td></td>
+                  <td className="small">{r.room === NO_ROOM ? <span className="muted">Not in a room</span> : r.room}{data.floors.length > 1 && !r.room.startsWith(r.floor) ? <span className="muted"> · {r.floor}</span> : null}</td>
+                  <td className="num small">{r.qty}</td>
+                </tr>
+              ))}
+            </tbody>
+          ))}
+          {usage.length === 0 && <tbody><tr><td colSpan={4} className="muted">Nothing placed yet.</td></tr></tbody>}
+        </table>
+      </div>
+    );
+  if (!keys.length) return <div className="pad stack">{toggle}<p className="muted">Draw a room on the plan to see its components here.</p></div>;
   return (
     <div className="pad stack">
+      {toggle}
       <select value={key} onChange={(e) => setPicked(e.target.value)} aria-label="Room">
         {groups.map((g) => (
           <optgroup key={g.floor.id} label={g.floor.name}>
