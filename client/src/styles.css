@@ -165,13 +165,8 @@ ul.plain { margin: 6px 0; padding-left: 18px; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
 .seg button { border: none; border-radius: 0; padding: 4px 10px; }
 .seg button.sel { background: var(--ink); color: #fff; }
-.rooms-sched { display: flex; flex-direction: column; gap: 6px; }
-.room-block { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
-.room-head { display: flex; justify-content: space-between; gap: 8px; font-weight: 500; margin-bottom: 4px; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .chip { font-family: var(--mono); font-size: 11px; border: 1px solid; border-radius: 10px; padding: 0 7px; }
-.rev-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
-.rev-list li { display: flex; justify-content: space-between; gap: 8px; align-items: start; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
 details summary { cursor: pointer; color: var(--ink-2); }
 
 /* ---------- Modals ---------- */

@@ -183,13 +183,4 @@ export interface PlanFile {
   uploadedAt: string;
 }
 
-export interface Revision {
-  id: string;
-  projectId: string;
-  label: string;
-  note: string | null;
-  createdAt: string;
-  createdBy: string | null;
-}
-
 export type Tool = 'select' | 'pan' | 'place' | 'room' | 'calibrate' | 'axis' | 'crop' | 'wire' | 'erase' | 'text' | 'wall';

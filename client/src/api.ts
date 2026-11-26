@@ -1,4 +1,4 @@
-import type { PlanFile, Project, ProjectData, ProjectSummary, Revision } from './types';
+import type { PlanFile, Project, ProjectData, ProjectSummary } from './types';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public body?: any) {
@@ -29,8 +29,4 @@ export const api = {
     return call<PlanFile>(`/api/projects/${projectId}/plans`, { method: 'POST', body: fd });
   },
   planUrl: (planId: string) => `/api/plans/${planId}`,
-  listRevisions: (projectId: string) => call<Revision[]>(`/api/projects/${projectId}/revisions`),
-  createRevision: (projectId: string, label: string, note: string, data: ProjectData) =>
-    call<Revision>(`/api/projects/${projectId}/revisions`, { method: 'POST', body: JSON.stringify({ label, note, data }) }),
-  getRevision: (id: string) => call<Revision & { data: ProjectData }>(`/api/revisions/${id}`),
 };

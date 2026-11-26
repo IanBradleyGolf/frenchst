@@ -32,7 +32,7 @@ export function ClearFloor({ floor }: { floor: Floor }) {
           <input type="checkbox" checked={opts[k]} disabled={!counts[k]} onChange={(e) => setOpts({ ...opts, [k]: e.target.checked })} /> {labels[k]} <span className="muted small">({counts[k]})</span>
         </label>
       ))}
-      <p className="muted small">The plan drawing, crop and scale stay. Ctrl+Z undoes this, and saved revisions are kept.</p>
+      <p className="muted small">The plan drawing, crop and scale stay. Ctrl+Z undoes this.</p>
       <div className="row gap wrap">
         <button
           className="danger"

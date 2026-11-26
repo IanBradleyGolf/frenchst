@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useFloor, useStore } from '../store';
 import { distance, mirrorItems, mirrorRoom, roomAt, polygonArea } from '../geometry';
-import { byRoom, copiesOf, libraryMap, money, NO_DWELLING, NO_ROOM, placedItems, totals, type Placed } from '../schedule';
+import { libraryMap, NO_ROOM, placedItems, totals } from '../schedule';
 import { svgFor } from '../symbols';
-import { api } from '../api';
-import type { Component, Floor, ProjectData, Revision, TextNote } from '../types';
+import type { Component, Floor, TextNote } from '../types';
 import { dwellingColor } from './PlanCanvas';
 import { ImportDialog } from './ImportDialog';
 import { linkSelected, unlinkSelected, deleteWire } from '../circuits';
@@ -22,9 +21,9 @@ export function RightPanel({ showLabels, setShowLabels, showRooms, setShowRooms,
   return (
     <aside className="right">
       <nav className="tabs" role="tablist">
-        {(['properties', 'rooms', 'notes', 'schedule', 'revisions'] as const).map((t) => (
+        {(['properties', 'rooms', 'notes', 'schedule'] as const).map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'sel' : ''} onClick={() => setRightTab(t)}>
-            {t === 'properties' ? 'Properties' : t === 'rooms' ? 'Rooms' : t === 'notes' ? <>Notes{openCount ? <span className="tab-badge">{openCount}</span> : null}</> : t === 'schedule' ? 'Schedule' : 'Revisions'}
+            {t === 'properties' ? 'Properties' : t === 'rooms' ? 'Rooms' : t === 'notes' ? <>Notes{openCount ? <span className="tab-badge">{openCount}</span> : null}</> : 'Schedule'}
           </button>
         ))}
       </nav>
@@ -33,7 +32,6 @@ export function RightPanel({ showLabels, setShowLabels, showRooms, setShowRooms,
         {tab === 'rooms' && (floor ? <Rooms floor={floor} /> : <p className="muted pad">Add a floor to begin.</p>)}
         {tab === 'notes' && <AllNotes />}
         {tab === 'schedule' && <Schedule />}
-        {tab === 'revisions' && <Revisions />}
       </div>
     </aside>
   );
@@ -381,234 +379,68 @@ function DwellingEditor() {
 
 /* ---------------- Schedule ---------------- */
 
-function WhereUsed({ items, codes, code, setCode, showFloor }: { items: Placed[]; codes: Component[]; code: string; setCode: (c: string) => void; showFloor: boolean }) {
-  const { setFloor, select } = useStore.getState();
-  const c = codes.find((x) => x.code === code);
-  const groups = useMemo(() => {
-    const m = new Map<string, { floor: Floor; room: string; dwelling: string; ids: string[] }>();
-    for (const p of items) {
-      if (p.code !== code) continue;
-      const k = `${p.floor.id}|${p.room}`;
-      if (!m.has(k)) m.set(k, { floor: p.floor, room: p.room, dwelling: p.dwelling, ids: [] });
-      m.get(k)!.ids.push(p.itemId);
-    }
-    return [...m.values()];
-  }, [items, code]);
-  const total = groups.reduce((a, g) => a + g.ids.length, 0);
-  return (
-    <div className="stack">
-      <select value={code} onChange={(e) => setCode(e.target.value)} aria-label="Component">
-        {codes.map((x) => <option key={x.code} value={x.code}>{x.code} – {x.name}</option>)}
-      </select>
-      {c && (
-        <div className="row gap" style={{ alignItems: 'center' }}>
-          <span dangerouslySetInnerHTML={{ __html: svgFor(c.symbol, c.color, 18) }} />
-          <span className="small"><b>{total}</b> placed in <b>{groups.length}</b> {groups.length === 1 ? 'room' : 'rooms'}</span>
-        </div>
-      )}
-      <table className="tbl">
-        <thead>
-          <tr>{showFloor && <th>Floor</th>}<th>Room</th><th className="num">Qty</th><th></th></tr>
-        </thead>
-        <tbody>
-          {groups.map((g) => (
-            <tr key={g.floor.id + g.room}>
-              {showFloor && <td className="small">{g.floor.name}</td>}
-              <td>{g.room === NO_ROOM ? <span className="muted">Not in a room</span> : g.room}</td>
-              <td className="num">{g.ids.length}</td>
-              <td className="num"><button className="mini" title="Select these on the plan" onClick={() => { setFloor(g.floor.id); setTimeout(() => { select({ kind: 'items', ids: g.ids }); useStore.setState({ rightTab: 'schedule' }); }, 0); }}>Show</button></td>
-            </tr>
-          ))}
-          {!groups.length && <tr><td colSpan={showFloor ? 4 : 3} className="muted">Not placed.</td></tr>}
-        </tbody>
-      </table>
-      <p className="muted small">Show switches to that floor and highlights those items on the plan. Tip: click any row in Totals to jump here.</p>
-    </div>
-  );
-}
-
 function Schedule() {
   const data = useStore((s) => s.project!.data);
   const floorId = useStore((s) => s.floorId);
-  const [scope, setScope] = useState<'floor' | 'project'>('project');
-  const [dwelling, setDwelling] = useState('all');
-  const [view, setView] = useState<'totals' | 'rooms' | 'where'>('totals');
-  const [whereCode, setWhereCode] = useState('');
+  const selection = useStore((s) => s.selection);
+  const [picked, setPicked] = useState('');
 
-  const items = useMemo(() => {
-    const floors = scope === 'floor' ? data.floors.filter((f) => f.id === floorId) : data.floors;
-    const all = placedItems(data, floors);
-    return dwelling === 'all' ? all : all.filter((p) => p.dwelling === dwelling);
-  }, [data, floorId, scope, dwelling]);
-  const tot = useMemo(() => totals(data, items), [data, items]);
-  const rooms = useMemo(() => byRoom(items), [items]);
-  const unassigned = items.filter((p) => p.dwelling === NO_DWELLING).length;
-  const sum = (k: 'qty' | 'supply' | 'install' | 'total') => tot.reduce((a, l) => a + l[k], 0);
-  const lib = libraryMap(data);
-  const n = copiesOf(data);
-  const { mutate } = useStore.getState();
-
-  return (
-    <div className="pad stack">
-      <div className="row gap">
-        <label htmlFor="copies" className="small" style={{ margin: 0 }}>Identical dwellings built from this layout</label>
-        <input id="copies" type="number" min={1} max={20} value={n} style={{ width: 60 }} onChange={(e) => mutate((d) => (d.copies = Math.max(1, Number(e.target.value) || 1)), 'copies')} />
-      </div>
-      <div className="row gap wrap">
-        <select value={scope} onChange={(e) => setScope(e.target.value as any)} aria-label="Scope">
-          <option value="project">All floors</option>
-          <option value="floor">This floor</option>
-        </select>
-        <select value={dwelling} onChange={(e) => setDwelling(e.target.value)} aria-label="Dwelling">
-          <option value="all">All dwellings</option>
-          {data.dwellings.map((d) => <option key={d}>{d}</option>)}
-          <option value={NO_DWELLING}>Not in a room</option>
-        </select>
-        <div className="seg">
-          <button className={view === 'totals' ? 'sel' : ''} onClick={() => setView('totals')}>Totals</button>
-          <button className={view === 'rooms' ? 'sel' : ''} onClick={() => setView('rooms')}>By room</button>
-          <button className={view === 'where' ? 'sel' : ''} onClick={() => { setView('where'); if (!whereCode && tot.length) setWhereCode(tot[0].component.code); }}>Where used</button>
-        </div>
-      </div>
-      {unassigned > 0 && dwelling === 'all' && data.floors.some((f) => f.rooms.length > 0) && <p className="warn small">{unassigned} items are not inside a room yet.</p>}
-      {view === 'where' ? (
-        <WhereUsed items={items} codes={tot.map((l) => l.component)} code={whereCode} setCode={setWhereCode} showFloor={scope === 'project'} />
-      ) : view === 'totals' ? (
-        <table className="tbl">
-          <thead>
-            <tr><th></th><th>Code</th><th className="num" title="Supply + install for one (per metre for linear profiles)">Each</th><th className="num">Per dw.</th><th className="num">×{n} qty</th><th className="num">Supply</th><th className="num">Install</th><th className="num">Total</th></tr>
-          </thead>
-          <tbody>
-            {tot.map((l) => (
-              <tr key={l.component.code} title={`${l.component.name} — click to see which rooms`} className="clickable" onClick={() => { setWhereCode(l.component.code); setView('where'); }}>
-                <td><span dangerouslySetInnerHTML={{ __html: svgFor(l.component.symbol, l.component.color, 16) }} /></td>
-                <td className="mono">{l.component.code}</td>
-                <td className="num" title={`Supply ${money(l.component.supplyRate)} + install ${money(l.component.installRate)}${l.component.symbol === 'profile' || l.component.symbol === 'loop' ? ' per metre' : ' each'}`}>
-                  <b>{money(l.component.supplyRate + l.component.installRate)}</b>{l.component.symbol === 'profile' || l.component.symbol === 'loop' ? <span className="muted">/m</span> : null}
-                  <div className="muted tiny">{money(l.component.supplyRate)} + {money(l.component.installRate)}</div>
-                </td>
-                <td className="num">{l.qty}</td>
-                <td className="num">{l.qty * n}</td>
-                <td className="num">{money(l.supply * n)}</td>
-                <td className="num">{money(l.install * n)}</td>
-                <td className="num">{money(l.total * n)}</td>
-              </tr>
-            ))}
-            {tot.length === 0 && <tr><td colSpan={8} className="muted">Nothing placed yet.</td></tr>}
-          </tbody>
-          {tot.length > 0 && (
-            <tfoot>
-              <tr><td></td><td>Total</td><td></td><td className="num">{sum('qty')}</td><td className="num">{sum('qty') * n}</td><td className="num">{money(sum('supply') * n)}</td><td className="num">{money(sum('install') * n)}</td><td className="num">{money(sum('total') * n)}</td></tr>
-            </tfoot>
-          )}
-        </table>
-      ) : (
-        <div className="rooms-sched">
-          {rooms.map((r) => (
-            <div key={`${r.floor}|${r.dwelling}|${r.room}`} className="room-block">
-              <div className="room-head">
-                <span>{r.room}</span>
-                <span className="muted small">{scope === 'project' ? `${r.floor} · ` : ''}{r.dwelling} · {r.qty}</span>
-              </div>
-              <div className="chips">
-                {[...r.counts.entries()].map(([code, n]) => (
-                  <span key={code} className="chip" style={{ borderColor: lib.get(code)?.color }}>
-                    <b>{n}</b> {code}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
-          {rooms.length === 0 && <p className="muted">Nothing placed yet.</p>}
-        </div>
-      )}
-      <p className="muted small">Costs are for all {n} dwellings, ex GST. Edit rates in the component library.</p>
-    </div>
+  const items = useMemo(() => placedItems(data), [data]);
+  // One entry per room, floor by floor, plus "not in a room" where a floor has loose items.
+  const groups = useMemo(
+    () =>
+      data.floors
+        .map((f) => {
+          const names = [...new Set(f.rooms.map((r) => r.name))];
+          if (items.some((p) => p.floor.id === f.id && p.room === NO_ROOM)) names.push(NO_ROOM);
+          return { floor: f, names };
+        })
+        .filter((g) => g.names.length > 0),
+    [data.floors, items],
   );
-}
+  const keys = groups.flatMap((g) => g.names.map((n) => `${g.floor.id}|${n}`));
 
-/* ---------------- Revisions ---------------- */
-
-function Revisions() {
-  const project = useStore((s) => s.project!);
-  const [list, setList] = useState<Revision[] | null>(null);
-  const [label, setLabel] = useState('');
-  const [note, setNote] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [compare, setCompare] = useState<{ rev: Revision; data: ProjectData } | null>(null);
-
-  const load = () => api.listRevisions(project.id).then(setList).catch((e) => setError(e.message));
+  // Follow the room selected on the plan; otherwise keep the last pick, else the first room on this floor.
+  const selRoom = selection.kind === 'room' ? data.floors.flatMap((f) => f.rooms.map((r) => ({ f, r }))).find((x) => x.r.id === selection.id) : undefined;
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [project.id]);
+    if (selRoom) setPicked(`${selRoom.f.id}|${selRoom.r.name}`);
+  }, [selRoom?.f.id, selRoom?.r.name]);
+  const key = keys.includes(picked) ? picked : keys.find((k) => k.startsWith(`${floorId}|`)) ?? keys[0] ?? '';
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
-    if (!label.trim()) return;
-    setBusy(true);
-    try {
-      await api.createRevision(project.id, label.trim(), note.trim(), project.data);
-      setLabel('');
-      setNote('');
-      await load();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const lines = useMemo(() => {
+    const at = key.indexOf('|');
+    const fid = key.slice(0, at);
+    const room = key.slice(at + 1);
+    return totals(data, items.filter((p) => p.floor.id === fid && p.room === room));
+  }, [data, items, key]);
+  const perMetre = (c: Component) => c.symbol === 'profile' || c.symbol === 'loop';
 
-  const diff = useMemo(() => {
-    if (!compare) return [];
-    const a = totals(compare.data, placedItems(compare.data));
-    const b = totals(project.data, placedItems(project.data));
-    const codes = [...new Set([...a, ...b].map((l) => l.component.code))];
-    return codes
-      .map((c) => ({ code: c, was: a.find((l) => l.component.code === c)?.qty ?? 0, now: b.find((l) => l.component.code === c)?.qty ?? 0 }))
-      .filter((r) => r.was !== r.now);
-  }, [compare, project.data]);
-
+  if (!keys.length) return <p className="muted pad">Draw a room on the plan to see its components here.</p>;
   return (
     <div className="pad stack">
-      <form className="stack" onSubmit={save}>
-        <p className="muted small">Save a named copy of the whole layout when you issue drawings, e.g. “Rev B – to electrician”.</p>
-        <input placeholder="Label, e.g. Rev B" value={label} onChange={(e) => setLabel(e.target.value)} aria-label="Revision label" />
-        <input placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} aria-label="Revision note" />
-        <button className="primary" disabled={busy || !label.trim()}>{busy ? 'Saving…' : 'Save revision'}</button>
-      </form>
-      {error && <p className="error">{error}</p>}
-      <ul className="rev-list">
-        {list?.map((r) => (
-          <li key={r.id}>
-            <div>
-              <b>{r.label}</b> <span className="muted small">{new Date(r.createdAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-              {r.note && <div className="small">{r.note}</div>}
-            </div>
-            <button className="mini" onClick={async () => setCompare({ rev: r, data: (await api.getRevision(r.id)).data })}>Compare</button>
-          </li>
+      <select value={key} onChange={(e) => setPicked(e.target.value)} aria-label="Room">
+        {groups.map((g) => (
+          <optgroup key={g.floor.id} label={g.floor.name}>
+            {g.names.map((n) => <option key={n} value={`${g.floor.id}|${n}`}>{n === NO_ROOM ? 'Not in a room' : n}</option>)}
+          </optgroup>
         ))}
-        {list?.length === 0 && <li className="muted small">No revisions saved yet.</li>}
-      </ul>
-      {compare && (
-        <div className="card-inset">
-          <div className="row between"><b>Changes since {compare.rev.label}</b><button className="icon" onClick={() => setCompare(null)} aria-label="Close">×</button></div>
-          {diff.length === 0 ? (
-            <p className="muted small">No quantity changes.</p>
-          ) : (
-            <table className="tbl">
-              <thead><tr><th>Code</th><th className="num">Was</th><th className="num">Now</th><th className="num">Change</th></tr></thead>
-              <tbody>
-                {diff.map((r) => (
-                  <tr key={r.code}><td className="mono">{r.code}</td><td className="num">{r.was}</td><td className="num">{r.now}</td><td className={`num ${r.now > r.was ? 'up' : 'down'}`}>{r.now > r.was ? '+' : ''}{r.now - r.was}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
+      </select>
+      <table className="tbl">
+        <thead>
+          <tr><th></th><th>Code</th><th>Component</th><th className="num">Qty</th></tr>
+        </thead>
+        <tbody>
+          {lines.map((l) => (
+            <tr key={l.component.code}>
+              <td><span dangerouslySetInnerHTML={{ __html: svgFor(l.component.symbol, l.component.color, 16) }} /></td>
+              <td className="mono">{l.component.code}</td>
+              <td>{l.component.name}</td>
+              <td className="num">{l.qty}{perMetre(l.component) ? <span className="muted"> m</span> : null}</td>
+            </tr>
+          ))}
+          {lines.length === 0 && <tr><td colSpan={4} className="muted">Nothing placed in this room.</td></tr>}
+        </tbody>
+      </table>
     </div>
   );
 }
-
