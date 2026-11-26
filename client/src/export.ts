@@ -1,5 +1,5 @@
 import { circuitColor, circuitLinks, circuitsOf, wireGeom } from './circuits';
-import { isVisible } from './layers';
+import { inCrop, isVisible } from './layers';
 import * as XLSX from 'xlsx';
 import { PDFDocument, StandardFonts, rgb, degrees, type PDFPage, type PDFFont } from 'pdf-lib';
 import { planBytes } from './pdf';
@@ -175,7 +175,7 @@ export async function exportPdf(project: Project, opts: { labels: boolean; rooms
       page.setCropBox(c.x1 * s, H - c.y2 * s, (c.x2 - c.x1) * s, (c.y2 - c.y1) * s);
       page.setMediaBox(c.x1 * s, H - c.y2 * s, (c.x2 - c.x1) * s, (c.y2 - c.y1) * s);
     }
-    const visible = floor.items.filter((x) => isVisible(data, x));
+    const visible = floor.items.filter((x) => isVisible(data, x) && inCrop(floor, x));
     for (const [name, list] of circuitsOf({ ...floor, items: visible })) {
       const col = hex(circuitColor(name));
       for (const [p, q] of circuitLinks(list, floor.links)) {
@@ -209,7 +209,7 @@ export async function exportPdf(project: Project, opts: { labels: boolean; rooms
     const ox = floor.crop ? floor.crop.x1 * s : 0, oy = floor.crop ? H - floor.crop.y2 * s : 0;
     page.drawRectangle({ x: ox + 8, y: oy + 8, width: 260, height: 22, color: rgb(1, 1, 1), opacity: 0.9, borderColor: rgb(0.1, 0.1, 0.1), borderWidth: 0.5 });
     page.drawText(`${project.name} – ${floor.name}`, { x: ox + 14, y: oy + 20, size: 7.5, font: bold });
-    page.drawText(`Component layout · ${stamp()} · ${floor.items.length} items`, { x: ox + 14, y: oy + 12, size: 6, font });
+    page.drawText(`Component layout · ${stamp()} · ${visible.length} items`, { x: ox + 14, y: oy + 12, size: 6, font });
   }
 
   // Legend + schedule pages

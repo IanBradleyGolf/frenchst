@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { svgFor } from '../symbols';
 import { FloorDialog } from './FloorDialog';
 import { ComponentDialog } from './ComponentDialog';
-import { layerCounts, layerOf } from '../layers';
+import { inCrop, layerCounts, layerOf } from '../layers';
 import { duplicateFloor } from '../floors';
 import { DEFAULT_LIBRARY, compareComponents } from '../library';
 
@@ -55,7 +55,7 @@ export function LeftPanel() {
   const counts = useMemo(() => {
     const m = new Map<string, number>();
     const f = data.floors.find((x) => x.id === floorId);
-    for (const it of f?.items ?? []) m.set(it.code, (m.get(it.code) ?? 0) + 1);
+    for (const it of f?.items ?? []) if (inCrop(f!, it)) m.set(it.code, (m.get(it.code) ?? 0) + 1);
     return m;
   }, [data, floorId]);
 
@@ -99,7 +99,7 @@ export function LeftPanel() {
               ) : (
                 <button onClick={() => setFloor(f.id)} onDoubleClick={() => setRenaming(f.id)} title="Double-click to rename">
                   <span>{f.name}</span>
-                  <span className="count">{f.items.length}</span>
+                  <span className="count">{f.items.filter((it) => inCrop(f, it)).length}</span>
                 </button>
               )}
               <span className="floor-actions">

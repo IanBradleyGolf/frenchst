@@ -1,6 +1,6 @@
 import { metresOf } from './symbols';
 import { compareComponents } from './library';
-import { isVisible } from './layers';
+import { inCrop, isVisible } from './layers';
 import { roomAt } from './geometry';
 import type { Component, Floor, ProjectData } from './types';
 
@@ -22,7 +22,7 @@ export function placedItems(data: ProjectData, floors: Floor[] = data.floors): P
   const out: Placed[] = [];
   for (const f of floors) {
     for (const it of f.items) {
-      if (!isVisible(data, it)) continue;
+      if (!isVisible(data, it) || !inCrop(f, it)) continue;
       const r = roomAt(f, it.x, it.y);
       out.push({ floor: f, itemId: it.id, code: it.code, room: r?.name ?? NO_ROOM, dwelling: r?.dwelling ?? NO_DWELLING, circuit: it.circuit ?? '', len: it.len, wid: it.wid });
     }

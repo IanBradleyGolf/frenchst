@@ -1,7 +1,9 @@
-import type { Item, ProjectData } from './types';
+import type { Floor, Item, ProjectData } from './types';
 
 export const MANUAL = 'Added by hand';
 export const layerOf = (it: Item) => it.layer ?? MANUAL;
+/** Inside the kept part of the sheet. Anything outside the crop is not drawn, so it is not counted or exported either. */
+export const inCrop = (f: Floor, it: Item) => !f.crop || (it.x >= f.crop.x1 && it.x <= f.crop.x2 && it.y >= f.crop.y1 && it.y <= f.crop.y2);
 export const isVisible = (data: ProjectData, it: Item) => !(data.hiddenLayers ?? []).includes(layerOf(it));
 
 export function layerCounts(data: ProjectData): { name: string; count: number; hidden: boolean }[] {
