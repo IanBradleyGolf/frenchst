@@ -238,3 +238,5 @@ details summary { cursor: pointer; color: var(--ink-2); }
 .tiny { font-size: 10px; line-height: 1.2; white-space: nowrap; }
 .tbl tr.comp-row td { background: #f8fafc; font-weight: 500; }
 .tbl tr.room-row td { border-top: none; padding-top: 2px; padding-bottom: 2px; }
+.tbl tr.comp-row button.swap { padding: 0 4px; opacity: 0; }
+.tbl tr.comp-row:hover button.swap, .tbl tr.comp-row button.swap:focus-visible { opacity: 1; }

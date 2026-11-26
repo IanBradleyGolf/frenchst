@@ -12,6 +12,7 @@ import { compareComponents } from '../library';
 import { isStretchy, lenOf, metresOf, widOf } from '../symbols';
 import { ClearFloor } from './ClearFloor';
 import { RoomNotes, openQuestions } from './RoomNotes';
+import { ReplaceComponent } from './ReplaceComponent';
 
 export function RightPanel({ showLabels, setShowLabels, showRooms, setShowRooms, showWires, setShowWires }: { showLabels: boolean; setShowLabels: (v: boolean) => void; showRooms: boolean; setShowRooms: (v: boolean) => void; showWires: boolean; setShowWires: (v: boolean) => void }) {
   const tab = useStore((s) => s.rightTab);
@@ -383,6 +384,7 @@ function Schedule() {
   const selection = useStore((s) => s.selection);
   const [picked, setPicked] = useState('');
   const [view, setView] = useState<'room' | 'component'>('room');
+  const [replacing, setReplacing] = useState<string | null | undefined>(undefined); // undefined = closed, null = no code preset
 
   const items = useMemo(() => placedItems(data), [data]);
   // One entry per room, floor by floor, plus "not in a room" where a floor has loose items.
@@ -437,7 +439,11 @@ function Schedule() {
   if (view === 'component')
     return (
       <div className="pad stack">
-        {toggle}
+        <div className="row gap wrap">
+          {toggle}
+          <button onClick={() => setReplacing(null)} disabled={usage.length === 0} title="Change every instance of one component to another, e.g. all DL1 to DL3">Replace…</button>
+        </div>
+        {replacing !== undefined && <ReplaceComponent key={replacing ?? ''} from={replacing ?? undefined} onClose={() => setReplacing(undefined)} />}
         <table className="tbl">
           <thead>
             <tr><th></th><th>Code</th><th>Component / room</th><th className="num">Qty</th></tr>
@@ -447,7 +453,7 @@ function Schedule() {
               <tr className="comp-row">
                 <td><span dangerouslySetInnerHTML={{ __html: svgFor(u.component.symbol, u.component.color, 16) }} /></td>
                 <td className="mono">{u.component.code}</td>
-                <td>{u.component.name}</td>
+                <td>{u.component.name} <button className="icon swap" title={`Replace every ${u.component.code} with another component`} onClick={() => setReplacing(u.component.code)}>⇄</button></td>
                 <td className="num"><b>{u.qty}</b>{perMetre(u.component) ? <span className="muted"> m</span> : null}</td>
               </tr>
               {u.rooms.map((r) => (
