@@ -99,6 +99,7 @@ export interface Item {
   wid?: number; // mm, depth of a rectangular loop (symbol 'loop')
   layer?: string; // where it came from, e.g. "LA Lounge lighting"; undefined = drawn by hand
   note?: string;
+  built?: 'all' | 'one'; // override how many duplexes this item is built in; undefined = follow its room
 }
 
 export interface Axis {

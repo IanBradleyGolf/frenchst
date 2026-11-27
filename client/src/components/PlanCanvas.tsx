@@ -984,6 +984,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
             <div className="item-card-meta">
               {[c.category, c.control, len, it.circuit && `circuit ${it.circuit}`, room && room.name].filter(Boolean).join(' · ')}
             </div>
+            {it.built && <div className="item-card-meta"><b className="one-side">{it.built === 'all' ? `Built in all ${data.copies ?? 2} duplexes` : 'Built in 1 duplex only'}</b> (overrides the room)</div>}
             <div className="item-card-meta">
               Supply ${c.supplyRate} + install ${c.installRate} = <b style={{ color: '#0f172a' }}>${c.supplyRate + c.installRate}</b>{c.symbol === 'profile' || c.symbol === 'loop' ? ' per metre' : ' each'}
             </div>

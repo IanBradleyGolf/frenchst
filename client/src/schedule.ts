@@ -14,7 +14,7 @@ export interface Placed {
   len?: number; // mm
   wid?: number; // mm
   mult: number; // how many duplexes this item is built in: copies, or 1 for one-duplex-only rooms
-  oneSide: boolean; // sits in a room marked as one duplex only
+  oneSide: boolean; // counted for one duplex only (its room is marked so, or the item is overridden)
 }
 
 export const NO_ROOM = '(no room)';
@@ -28,10 +28,16 @@ export function placedItems(data: ProjectData, floors: Floor[] = data.floors): P
     for (const it of f.items) {
       if (!isVisible(data, it) || !inCrop(f, it)) continue;
       const r = roomAt(f, it.x, it.y);
-      out.push({ floor: f, itemId: it.id, code: it.code, room: r?.name ?? NO_ROOM, dwelling: r?.dwelling ?? NO_DWELLING, circuit: it.circuit ?? '', len: it.len, wid: it.wid, mult: r && single.has(r.name) ? 1 : n, oneSide: !!r && single.has(r.name) });
+      out.push({ floor: f, itemId: it.id, code: it.code, room: r?.name ?? NO_ROOM, dwelling: r?.dwelling ?? NO_DWELLING, circuit: it.circuit ?? '', len: it.len, wid: it.wid, ...builtIn(it.built, !!r && single.has(r.name), n) });
     }
   }
   return out;
+}
+
+/** How many duplexes an item is built in: its own override if set, otherwise its room's setting. */
+export function builtIn(override: 'all' | 'one' | undefined, roomIsSingle: boolean, n: number) {
+  const one = override ? override === 'one' : roomIsSingle;
+  return { mult: one ? 1 : n, oneSide: one && n > 1 };
 }
 
 export interface Line {

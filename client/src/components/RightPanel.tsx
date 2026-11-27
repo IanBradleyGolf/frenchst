@@ -159,6 +159,24 @@ function Properties({ floor, showLabels, setShowLabels, showRooms, setShowRooms,
         {circuits.length === 1 && circuits[0] && <p className="muted small">Circuit {circuits[0]} has {floor.items.filter((i) => i.circuit === circuits[0]).length} lights.</p>}
         <label htmlFor="pp-cct">Circuit</label>
         <input id="pp-cct" placeholder={circuits.length > 1 ? '(mixed)' : 'e.g. K1-2 or C04'} value={circuits.length === 1 ? circuits[0] : ''} onChange={(e) => updateSel((it) => (it.circuit = e.target.value || undefined), 'circuit')} />
+        {(() => {
+          const n = data.copies ?? 2;
+          const single = new Set(data.singleRooms ?? []);
+          const vals = [...new Set(items.map((i) => i.built ?? ''))];
+          const effective = [...new Set(items.map((i) => (i.built ? i.built === 'one' : single.has(roomAt(floor, i.x, i.y)?.name ?? '')) ? 1 : n))];
+          return (
+            <>
+              <label htmlFor="pp-built">Built in</label>
+              <select id="pp-built" value={vals.length === 1 ? vals[0] : 'mixed'} onChange={(e) => { const v = e.target.value; if (v !== 'mixed') updateSel((it) => { if (v) it.built = v as 'all' | 'one'; else delete it.built; }); }}>
+                {vals.length > 1 && <option value="mixed">(mixed)</option>}
+                <option value="">Same as its room</option>
+                <option value="all">All {n} duplexes (×{n})</option>
+                <option value="one">1 duplex only (×1)</option>
+              </select>
+              <p className="muted small">Counted {effective.length === 1 ? `×${effective[0]}` : 'differently across the selection'} in the exports.</p>
+            </>
+          );
+        })()}
         <label htmlFor="pp-note">Note</label>
         <textarea id="pp-note" rows={2} placeholder={notes.length > 1 ? '(mixed)' : ''} value={notes.length === 1 ? notes[0] : ''} onChange={(e) => updateSel((it) => (it.note = e.target.value || undefined), 'note')} />
         {items.every((i) => isStretchy(lib.get(i.code)?.symbol ?? 'generic')) && (() => {

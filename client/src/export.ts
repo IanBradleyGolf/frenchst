@@ -40,7 +40,7 @@ export function exportExcel(project: Project) {
     Control: l.component.control,
     Unit: unitOf(l.component),
     'Qty as drawn (1 duplex)': l.qty,
-    ...(anySingle ? { 'Of which in 1-duplex-only rooms': l.qtySingle } : {}),
+    ...(anySingle ? { 'Of which for 1 duplex only': l.qtySingle } : {}),
     [`Total qty (${n} duplexes)`]: l.qtyAll,
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sumRows), 'Totals');
@@ -51,7 +51,7 @@ export function exportExcel(project: Project) {
   const rooms = roomNames.map((room) => {
     const mine = all.filter((p) => p.room === room);
     const lines = new Map(totals(data, mine).map((l) => [l.component.code, l]));
-    const row: Record<string, string | number> = { Room: room === NO_ROOM ? 'Not in a room' : room, 'Built in': mine[0].oneSide ? '1 duplex' : `${n} duplexes` };
+    const row: Record<string, string | number> = { Room: room === NO_ROOM ? 'Not in a room' : room, 'Built in': (data.singleRooms ?? []).includes(room) ? '1 duplex' : `${n} duplexes` };
     for (const c of codes) row[c] = lines.get(c)?.qtyAll ?? 0;
     row['Total items'] = [...lines.values()].reduce((t, l) => t + (unitOf(l.component) === 'each' ? l.qtyAll : 0), 0);
     return row;
@@ -63,7 +63,7 @@ export function exportExcel(project: Project) {
   const items = all.map((p) => {
     const it = p.floor.items.find((x) => x.id === p.itemId)!;
     const c = lib.get(p.code) ?? unknownComponent(p.code);
-    return { Floor: p.floor.name, Room: p.room === NO_ROOM ? 'Not in a room' : p.room, Code: p.code, Component: c.name, Circuit: p.circuit, 'Built in': p.mult, Note: it.note ?? '' };
+    return { Floor: p.floor.name, Room: p.room === NO_ROOM ? 'Not in a room' : p.room, Code: p.code, Component: c.name, Circuit: p.circuit, 'Built in': p.mult, Override: it.built === 'all' ? `All ${n} duplexes` : it.built === 'one' ? '1 duplex only' : '', Note: it.note ?? '' };
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(items), 'Items');
 
@@ -244,7 +244,7 @@ async function scheduleSheets(out: PDFDocument, project: Project, font: PDFFont,
     line([
       { t: 'Symbol', x: 40, f: bold }, { t: 'Code', x: 80, f: bold }, { t: 'Component', x: 130, f: bold }, { t: 'Control', x: 560, f: bold }, { t: 'Unit', x: 650, f: bold },
       { t: 'As drawn (1 duplex)', x: 690, w: 100, right: true, f: bold },
-      ...(anySingle ? [{ t: 'In 1-duplex rooms', x: 800, w: 100, right: true, f: bold }] : []),
+      ...(anySingle ? [{ t: 'For 1 duplex only', x: 800, w: 100, right: true, f: bold }] : []),
       { t: `Total (${n} duplexes)`, x: 910, w: 110, right: true, f: bold },
     ]);
     for (const l of tot) {
@@ -259,7 +259,7 @@ async function scheduleSheets(out: PDFDocument, project: Project, font: PDFFont,
     }
     y -= 14;
   }
-  if (anySingle) page.drawText(`Rooms counted for 1 duplex only: ${(data.singleRooms ?? []).join(', ')}`.slice(0, 260), { x: 40, y: 30, size: 7, font });
+  if (anySingle) page.drawText(`Rooms counted for 1 duplex only: ${(data.singleRooms ?? []).join(', ') || 'none'}. Individual components can override their room in Properties.`.slice(0, 300), { x: 40, y: 30, size: 7, font });
 }
 
 const unitOf = (c: Component) => (c.symbol === 'profile' || c.symbol === 'loop' ? 'm' : 'each');
