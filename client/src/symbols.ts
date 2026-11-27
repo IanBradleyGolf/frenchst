@@ -47,6 +47,8 @@ export const SYMBOLS: Record<SymbolKind, Prim[]> = {
   smoke: [ring(), label('S', 1)],
   ev: [{ t: 'rect', x: -1, y: -1, w: 2, h: 2, sw: 0.18 }, label('EV', 0.8)],
   meterbox: [{ t: 'rect', x: -1.2, y: -0.9, w: 2.4, h: 1.8, sw: 0.18 }, label('MB', 0.8)],
+  distboard: [{ t: 'rect', x: -1.2, y: -0.9, w: 2.4, h: 1.8, sw: 0.18 }, { t: 'poly', pts: [-1.2, 0.9, 1.2, -0.9, 1.2, 0.9], fill: true, closed: true }, { t: 'text', x: -0.45, y: -0.3, s: 'DB', size: 0.7 }],
+  comms: [{ t: 'rect', x: -1.2, y: -0.9, w: 2.4, h: 1.8, sw: 0.18 }, { t: 'rect', x: -1.2, y: -0.9, w: 2.4, h: 0.45, fill: true }, { t: 'text', x: 0, y: 0.25, s: 'CTA', size: 0.65 }],
   circuit: [{ t: 'poly', pts: [0, -1, 1, 0, 0, 1, -1, 0], closed: true, w: 0.18 }, label('C', 0.8)],
   rack: [{ t: 'rect', x: -1.1, y: -1.1, w: 2.2, h: 2.2, sw: 0.22 }, { t: 'rect', x: -0.8, y: -0.8, w: 1.6, h: 1.6, sw: 0.1 }, label('RACK', 0.45)],
   profile: [{ t: 'rect', x: -1.8, y: -0.28, w: 3.6, h: 0.56, sw: 0.14 }, { t: 'rect', x: -1.65, y: -0.12, w: 3.3, h: 0.24, fill: true }],
