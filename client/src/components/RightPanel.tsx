@@ -389,33 +389,23 @@ function Schedule() {
   const [replacing, setReplacing] = useState<string | null | undefined>(undefined); // undefined = closed, null = no code preset
 
   const items = useMemo(() => placedItems(data), [data]);
-  // One entry per room, floor by floor, plus "not in a room" where a floor has loose items.
-  const groups = useMemo(
-    () =>
-      data.floors
-        .map((f) => {
-          const names = [...new Set(f.rooms.map((r) => r.name))];
-          if (items.some((p) => p.floor.id === f.id && p.room === NO_ROOM)) names.push(NO_ROOM);
-          return { floor: f, names };
-        })
-        .filter((g) => g.names.length > 0),
-    [data.floors, items],
-  );
-  const keys = groups.flatMap((g) => g.names.map((n) => `${g.floor.id}|${n}`));
+  // One entry per room name, totalled across every floor (layers like Low Voltage and Powerpoints share room names),
+  // plus "not in a room" if anything is loose.
+  const keys = useMemo(() => {
+    const names = [...new Set(data.floors.flatMap((f) => f.rooms.map((r) => r.name)))];
+    if (items.some((p) => p.room === NO_ROOM)) names.push(NO_ROOM);
+    return names;
+  }, [data.floors, items]);
 
   // Follow the room selected on the plan; otherwise keep the last pick, else the first room on this floor.
   const selRoom = selection.kind === 'room' ? data.floors.flatMap((f) => f.rooms.map((r) => ({ f, r }))).find((x) => x.r.id === selection.id) : undefined;
   useEffect(() => {
-    if (selRoom) setPicked(`${selRoom.f.id}|${selRoom.r.name}`);
-  }, [selRoom?.f.id, selRoom?.r.name]);
-  const key = keys.includes(picked) ? picked : keys.find((k) => k.startsWith(`${floorId}|`)) ?? keys[0] ?? '';
+    if (selRoom) setPicked(selRoom.r.name);
+  }, [selRoom?.r.name]);
+  const firstHere = data.floors.find((f) => f.id === floorId)?.rooms[0]?.name;
+  const key = keys.includes(picked) ? picked : firstHere && keys.includes(firstHere) ? firstHere : keys[0] ?? '';
 
-  const lines = useMemo(() => {
-    const at = key.indexOf('|');
-    const fid = key.slice(0, at);
-    const room = key.slice(at + 1);
-    return totals(data, items.filter((p) => p.floor.id === fid && p.room === room));
-  }, [data, items, key]);
+  const lines = useMemo(() => totals(data, items.filter((p) => p.room === key)), [data, items, key]);
   const perMetre = (c: Component) => c.symbol === 'profile' || c.symbol === 'loop';
 
   const looseCount = useMemo(() => items.filter((p) => p.room === NO_ROOM).length, [items]);
@@ -424,10 +414,8 @@ function Schedule() {
     const pool = loose ? items.filter((p) => p.room === NO_ROOM) : items;
     return totals(data, pool).map((l) => {
         const mine = pool.filter((p) => p.code === l.component.code);
-        const rooms = data.floors.flatMap((f) => {
-          const here = mine.filter((p) => p.floor.id === f.id);
-          return [...new Set(here.map((p) => p.room))].map((room) => ({ floor: f.name, room, qty: totals(data, here.filter((p) => p.room === room))[0]?.qty ?? 0 }));
-        });
+        // One row per room name, totalled across floors.
+        const rooms = [...new Set(mine.map((p) => p.room))].map((room) => ({ room, qty: totals(data, mine.filter((p) => p.room === room))[0]?.qty ?? 0 }));
         return { ...l, rooms };
       });
   }, [data, items, loose]);
@@ -440,7 +428,7 @@ function Schedule() {
     return usage.flatMap((u) => {
       const c = u.component;
       if (hit(`${c.code} ${c.name} ${c.category}`)) return [u];
-      const rooms = u.rooms.filter((r) => hit(`${c.code} ${c.name} ${c.category} ${r.room === NO_ROOM ? 'not in a room' : r.room} ${r.floor}`));
+      const rooms = u.rooms.filter((r) => hit(`${c.code} ${c.name} ${c.category} ${r.room === NO_ROOM ? 'not in a room' : r.room}`));
       return rooms.length ? [{ ...u, rooms }] : [];
     });
   }, [usage, q]);
@@ -479,10 +467,10 @@ function Schedule() {
                 <td className="num"><b>{u.qty}</b>{perMetre(u.component) ? <span className="muted"> m</span> : null}</td>
               </tr>
               {u.rooms.map((r) => (
-                <tr key={r.floor + r.room} className="room-row">
+                <tr key={r.room} className="room-row">
                   <td></td>
                   <td></td>
-                  <td className="small">{r.room === NO_ROOM ? <span className="muted">Not in a room</span> : r.room}{data.floors.length > 1 && !r.room.startsWith(r.floor) ? <span className="muted"> · {r.floor}</span> : null}</td>
+                  <td className="small">{r.room === NO_ROOM ? <span className="muted">Not in a room</span> : r.room}</td>
                   <td className="num small">{r.qty}</td>
                 </tr>
               ))}
@@ -498,11 +486,7 @@ function Schedule() {
     <div className="pad stack">
       {toggle}
       <select value={key} onChange={(e) => setPicked(e.target.value)} aria-label="Room">
-        {groups.map((g) => (
-          <optgroup key={g.floor.id} label={g.floor.name}>
-            {g.names.map((n) => <option key={n} value={`${g.floor.id}|${n}`}>{n === NO_ROOM ? 'Not in a room' : n}</option>)}
-          </optgroup>
-        ))}
+        {keys.map((n) => <option key={n} value={n}>{n === NO_ROOM ? 'Not in a room' : n}</option>)}
       </select>
       <table className="tbl">
         <thead>
