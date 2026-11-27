@@ -32,6 +32,7 @@ export const SYMBOLS: Record<SymbolKind, Prim[]> = {
   keypad: [{ t: 'rect', x: -0.8, y: -1, w: 1.6, h: 2, fill: true }, { t: 'rect', x: -0.45, y: -0.65, w: 0.9, h: 0.35, fill: false, sw: 0.12 }],
   sensor: [ring(), label('MS', 0.8)],
   touchscreen: [{ t: 'rect', x: -1.1, y: -0.8, w: 2.2, h: 1.6, sw: 0.18 }, label('TS', 0.8)],
+  blind: [{ t: 'rect', x: -1, y: -1, w: 2, h: 2, sw: 0.18 }, { t: 'rect', x: -1, y: -1, w: 2, h: 0.45, fill: true }, { t: 'text', x: 0, y: 0.25, s: 'BL', size: 0.7 }],
   gpo: [{ t: 'rect', x: -1, y: -0.6, w: 2, h: 1.2, sw: 0.18 }, { t: 'circle', cx: -0.45, cy: 0, r: 0.18, fill: true }, { t: 'circle', cx: 0.45, cy: 0, r: 0.18, fill: true }],
   usb: [{ t: 'rect', x: -1, y: -0.6, w: 2, h: 1.2, sw: 0.18 }, label('USB', 0.6)],
   'gpo-wp': [{ t: 'rect', x: -1, y: -0.6, w: 2, h: 1.2, fill: true }, label('WP', 0.7)],
