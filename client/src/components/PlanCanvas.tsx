@@ -93,6 +93,35 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitNonce]);
 
+  // Frame and flash items asked for from the schedule.
+  const focus = useStore((s) => s.focus);
+  const [flash, setFlash] = useState<{ ids: Set<string>; on: boolean } | null>(null);
+  useEffect(() => {
+    if (!focus || focus.floorId !== floor.id || size.w < 100 || size.h < 100) return;
+    useStore.getState().clearFocus();
+    const its = floor.items.filter((i) => focus.ids.includes(i.id));
+    if (!its.length) return;
+    const pad = 80;
+    const x1 = Math.min(...its.map((i) => i.x)) - sz * 3, x2 = Math.max(...its.map((i) => i.x)) + sz * 3;
+    const y1 = Math.min(...its.map((i) => i.y)) - sz * 3, y2 = Math.max(...its.map((i) => i.y)) + sz * 3;
+    const cur = useStore.getState().views[floor.id]?.zoom ?? 1;
+    // Keep the current zoom unless the items don't fit, then zoom out just enough.
+    const zoom = Math.min(cur, (size.w - pad * 2) / (x2 - x1), (size.h - pad * 2) / (y2 - y1));
+    setView(floor.id, { zoom, x: size.w / 2 - ((x1 + x2) / 2) * zoom, y: size.h / 2 - ((y1 + y2) / 2) * zoom });
+    const ids = new Set(its.map((i) => i.id));
+    let n = 0;
+    setFlash({ ids, on: true });
+    const t = setInterval(() => {
+      n++;
+      if (n >= 8) {
+        clearInterval(t);
+        setFlash(null);
+      } else setFlash({ ids, on: n % 2 === 0 });
+    }, 350);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.nonce, floor.id, size.w, size.h]);
+
   // Space bar = temporary pan
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -664,6 +693,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                     ) : (
                       <Rect x={-ext - 1} y={-sz - 1} width={(ext + 1) * 2} height={(sz + 1) * 2} fill="transparent" />
                     )}
+                    {flash?.on && flash.ids.has(it.id) && <Circle radius={Math.max(ext, extY) + 22 / v.zoom} stroke="#f97316" strokeWidth={4 / v.zoom} listening={false} />}
                     {sel && <Rect x={-ext - 1.5} y={-extY - 1.5} width={(ext + 1.5) * 2} height={(extY + 1.5) * 2} stroke="#f97316" strokeWidth={1.2 / v.zoom} dash={[3 / v.zoom, 2 / v.zoom]} listening={false} />}
                     <SymbolShape kind={c.symbol} color={c.color} size={sz} half={half} halfW={halfW} />
                   </Group>

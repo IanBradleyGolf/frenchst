@@ -246,3 +246,9 @@ details summary { cursor: pointer; color: var(--ink-2); }
 .tbl tr.room-row td { border-top: none; padding-top: 2px; padding-bottom: 2px; }
 .tbl tr.comp-row button.swap { padding: 0 4px; opacity: 0; }
 .tbl tr.comp-row:hover button.swap, .tbl tr.comp-row button.swap:focus-visible { opacity: 1; }
+
+/* Schedule rows that jump to items on the plan */
+.tbl tr.find { cursor: pointer; }
+.tbl tr.find:hover td { background: var(--hover, #fff4ed); }
+.find-hint { color: #ea580c; font-size: 11px; margin-left: 4px; opacity: 0; }
+.tbl tr.find:hover .find-hint { opacity: 1; }

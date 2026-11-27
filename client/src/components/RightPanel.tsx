@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useFloor, useStore } from '../store';
 import { distance, mirrorItems, mirrorRoom, roomAt, polygonArea } from '../geometry';
 import { libraryMap, NO_ROOM, placedItems, totals } from '../schedule';
@@ -378,6 +378,8 @@ function DwellingEditor() {
 
 /* ---------------- Schedule ---------------- */
 
+const byName = (a: string, b: string) => a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' });
+
 function Schedule() {
   const data = useStore((s) => s.project!.data);
   const floorId = useStore((s) => s.floorId);
@@ -392,7 +394,7 @@ function Schedule() {
   // One entry per room name, totalled across every floor (layers like Low Voltage and Powerpoints share room names),
   // plus "not in a room" if anything is loose.
   const keys = useMemo(() => {
-    const names = [...new Set(data.floors.flatMap((f) => f.rooms.map((r) => r.name)))];
+    const names = [...new Set(data.floors.flatMap((f) => f.rooms.map((r) => r.name)))].sort(byName);
     if (items.some((p) => p.room === NO_ROOM)) names.push(NO_ROOM);
     return names;
   }, [data.floors, items]);
@@ -406,6 +408,22 @@ function Schedule() {
   const key = keys.includes(picked) ? picked : firstHere && keys.includes(firstHere) ? firstHere : keys[0] ?? '';
 
   const lines = useMemo(() => totals(data, items.filter((p) => p.room === key)), [data, items, key]);
+  // For "Not in a room": where each loose component sits, floor by floor.
+  const looseByFloor = useMemo(() => {
+    if (key !== NO_ROOM) return new Map<string, { floor: Floor; ids: string[]; qty: number }[]>();
+    const m = new Map<string, { floor: Floor; ids: string[]; qty: number }[]>();
+    for (const f of data.floors) {
+      const here = items.filter((p) => p.room === NO_ROOM && p.floor.id === f.id);
+      for (const code of new Set(here.map((p) => p.code))) {
+        const mine = here.filter((p) => p.code === code);
+        const list = m.get(code) ?? [];
+        list.push({ floor: f, ids: mine.map((p) => p.itemId), qty: totals(data, mine)[0]?.qty ?? 0 });
+        m.set(code, list);
+      }
+    }
+    return m;
+  }, [data, items, key]);
+  const { focusItems } = useStore.getState();
   const perMetre = (c: Component) => c.symbol === 'profile' || c.symbol === 'loop';
 
   const looseCount = useMemo(() => items.filter((p) => p.room === NO_ROOM).length, [items]);
@@ -414,8 +432,14 @@ function Schedule() {
     const pool = loose ? items.filter((p) => p.room === NO_ROOM) : items;
     return totals(data, pool).map((l) => {
         const mine = pool.filter((p) => p.code === l.component.code);
-        // One row per room name, totalled across floors.
-        const rooms = [...new Set(mine.map((p) => p.room))].map((room) => ({ room, qty: totals(data, mine.filter((p) => p.room === room))[0]?.qty ?? 0 }));
+        // One row per room name, totalled across floors; loose items get one row per floor so they can be found.
+        const rooms = [...new Set(mine.filter((p) => p.room !== NO_ROOM).map((p) => p.room))]
+          .sort(byName)
+          .map((room) => ({ room, floor: null as Floor | null, ids: [] as string[], qty: totals(data, mine.filter((p) => p.room === room))[0]?.qty ?? 0 }));
+        for (const f of data.floors) {
+          const here = mine.filter((p) => p.room === NO_ROOM && p.floor.id === f.id);
+          if (here.length) rooms.push({ room: NO_ROOM, floor: f, ids: here.map((p) => p.itemId), qty: totals(data, here)[0]?.qty ?? 0 });
+        }
         return { ...l, rooms };
       });
   }, [data, items, loose]);
@@ -467,10 +491,10 @@ function Schedule() {
                 <td className="num"><b>{u.qty}</b>{perMetre(u.component) ? <span className="muted"> m</span> : null}</td>
               </tr>
               {u.rooms.map((r) => (
-                <tr key={r.room} className="room-row">
+                <tr key={r.room + (r.floor?.id ?? '')} className={r.floor ? 'room-row find' : 'room-row'} onClick={r.floor ? () => focusItems(r.floor!.id, r.ids) : undefined} title={r.floor ? 'Show these on the plan' : undefined}>
                   <td></td>
                   <td></td>
-                  <td className="small">{r.room === NO_ROOM ? <span className="muted">Not in a room</span> : r.room}</td>
+                  <td className="small">{r.floor ? <><span className="muted">Not in a room · </span>{r.floor.name} <span className="find-hint">Show ›</span></> : r.room}</td>
                   <td className="num small">{r.qty}</td>
                 </tr>
               ))}
@@ -493,14 +517,28 @@ function Schedule() {
           <tr><th></th><th>Code</th><th>Component</th><th className="num">Qty</th></tr>
         </thead>
         <tbody>
-          {lines.map((l) => (
-            <tr key={l.component.code}>
-              <td><span dangerouslySetInnerHTML={{ __html: svgFor(l.component.symbol, l.component.color, 16) }} /></td>
-              <td className="mono">{l.component.code}</td>
-              <td>{l.component.name}</td>
-              <td className="num">{l.qty}{perMetre(l.component) ? <span className="muted"> m</span> : null}</td>
-            </tr>
-          ))}
+          {lines.map((l) => {
+            const where = looseByFloor.get(l.component.code) ?? [];
+            const all = () => where[0] && focusItems(where[0].floor.id, where[0].ids);
+            return (
+              <Fragment key={l.component.code}>
+                <tr className={where.length ? 'find' : undefined} onClick={where.length ? all : undefined} title={where.length ? 'Show on the plan' : undefined}>
+                  <td><span dangerouslySetInnerHTML={{ __html: svgFor(l.component.symbol, l.component.color, 16) }} /></td>
+                  <td className="mono">{l.component.code}</td>
+                  <td>{l.component.name}</td>
+                  <td className="num">{l.qty}{perMetre(l.component) ? <span className="muted"> m</span> : null}</td>
+                </tr>
+                {where.map((w) => (
+                  <tr key={w.floor.id} className="room-row find" onClick={() => focusItems(w.floor.id, w.ids)} title="Show these on the plan">
+                    <td></td>
+                    <td></td>
+                    <td className="small">{w.floor.name} <span className="find-hint">Show ›</span></td>
+                    <td className="num small">{w.qty}</td>
+                  </tr>
+                ))}
+              </Fragment>
+            );
+          })}
           {lines.length === 0 && <tr><td colSpan={4} className="muted">Nothing placed in this room.</td></tr>}
         </tbody>
       </table>

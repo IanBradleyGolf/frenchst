@@ -29,6 +29,10 @@ interface State {
   rightTab: 'properties' | 'schedule' | 'rooms';
   fitNonce: number;
   requestFit(): void;
+  /** Pending request to show items on the plan: switch floor, frame them and flash a marker. */
+  focus: { floorId: string; ids: string[]; nonce: number } | null;
+  focusItems(floorId: string, ids: string[]): void;
+  clearFocus(): void;
 
   setProject(p: Project | null): void;
   mutate(fn: (d: ProjectData) => void, key?: string): void;
@@ -92,6 +96,11 @@ export const useStore = create<State>((set, get) => ({
   rightTab: 'properties',
   fitNonce: 0,
   requestFit: () => set({ fitNonce: get().fitNonce + 1 }),
+  focus: null,
+  // Selects the items without leaving the current right-hand tab, so the schedule stays open.
+  focusItems: (floorId, ids) =>
+    set({ floorId, tool: 'select', draft: [], selection: { kind: 'items', ids }, focus: { floorId, ids, nonce: (get().focus?.nonce ?? 0) + 1 } }),
+  clearFocus: () => set({ focus: null }),
 
   setProject: (p) =>
     set({
