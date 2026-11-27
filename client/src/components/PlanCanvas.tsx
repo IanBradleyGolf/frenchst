@@ -18,6 +18,14 @@ import { bendFor, circuitColor, circuitLinks, circuitsOf, wireGeom, wireTogether
 const RENDER_SCALE = 3;
 const DWELLING_COLORS = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed'];
 
+// Width of a room label in page units, for sizing its grab handle.
+const measureCtx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
+function textWidth(text: string, size: number) {
+  if (!measureCtx) return text.length * size * 0.58;
+  measureCtx.font = `600 100px "IBM Plex Sans", sans-serif`;
+  return (measureCtx.measureText(text).width / 100) * size;
+}
+
 export function dwellingColor(dwellings: string[], d: string) {
   const i = dwellings.indexOf(d);
   return DWELLING_COLORS[(i < 0 ? 4 : i) % DWELLING_COLORS.length];
@@ -92,6 +100,8 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
     fit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitNonce]);
+
+  const [labelHover, setLabelHover] = useState<string | null>(null);
 
   // Frame and flash items asked for from the schedule.
   const focus = useStore((s) => s.focus);
@@ -666,7 +676,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
               );
             })}
 
-            {/* Room labels sit above the components and can be dragged clear of them. Double-click to recentre. */}
+            {/* Room labels sit above the components and can be dragged clear of them (Select or Place tool). Double-click to recentre. */}
             {showRooms &&
               floor.rooms.map((r) => {
                 const col = dwellingColor(data.dwellings, r.dwelling);
@@ -674,10 +684,14 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                 const lx = c.x + (r.label?.dx ?? 0), ly = c.y + (r.label?.dy ?? 0);
                 const q = openQuestions(r);
                 const fs = Math.max(3, 10 / v.zoom);
+                const tw = textWidth(r.name, fs);
+                const padX = 5 / v.zoom, padY = 3 / v.zoom;
+                const movable = (tool === 'select' || tool === 'place') && !space;
+                const hot = labelHover === r.id;
                 const pick = (e: Konva.KonvaEventObject<MouseEvent>) => {
-                  if (tool !== 'select' || space || e.evt.button !== 0) return;
+                  if (!movable || e.evt.button !== 0) return;
                   e.cancelBubble = true;
-                  select({ kind: 'room', id: r.id });
+                  if (tool === 'select') select({ kind: 'room', id: r.id });
                 };
                 const setLabel = (label: Room['label']) =>
                   mutate((d) => {
@@ -690,18 +704,42 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                     key={'lbl-' + r.id}
                     x={lx}
                     y={ly}
-                    draggable={tool === 'select' && !space}
+                    draggable={movable}
+                    listening={movable}
                     onMouseDown={pick}
-                    onMouseEnter={(e) => tool === 'select' && (e.target.getStage()!.container().style.cursor = 'move')}
-                    onMouseLeave={(e) => (e.target.getStage()!.container().style.cursor = '')}
+                    onMouseEnter={(e) => {
+                      setLabelHover(r.id);
+                      setHoverId(null);
+                      e.target.getStage()!.container().style.cursor = 'move';
+                    }}
+                    onMouseLeave={(e) => {
+                      setLabelHover((h) => (h === r.id ? null : h));
+                      e.target.getStage()!.container().style.cursor = '';
+                    }}
                     onDragEnd={(e) => setLabel({ dx: e.target.x() - c.x, dy: e.target.y() - c.y })}
-                    onDblClick={() => setLabel(undefined)}
+                    onDblClick={(e) => {
+                      e.cancelBubble = true;
+                      setLabel(undefined);
+                    }}
                   >
-                    <Text x={-60} y={-5 / v.zoom} width={120} align="center" text={r.name} fontSize={fs} fontFamily="IBM Plex Sans" fontStyle="600" fill={col} opacity={0.9} />
+                    <Rect
+                      x={-tw / 2 - padX}
+                      y={-fs / 2 - padY}
+                      width={tw + padX * 2}
+                      height={fs + padY * 2}
+                      cornerRadius={4 / v.zoom}
+                      fill={hot ? '#ffffff' : 'rgba(255,255,255,0.55)'}
+                      stroke={hot ? col : undefined}
+                      strokeWidth={1.2 / v.zoom}
+                      shadowColor="#0f172a"
+                      shadowBlur={hot ? 6 / v.zoom : 0}
+                      shadowOpacity={0.25}
+                    />
+                    <Text x={-tw / 2} y={-fs / 2} text={r.name} fontSize={fs} fontFamily="IBM Plex Sans" fontStyle="600" fill={col} listening={false} />
                     {q > 0 && (
-                      <Group y={fs * 1.3}>
-                        <Rect x={-fs * 1.6} y={-fs * 0.1} width={fs * 3.2} height={fs * 1.25} cornerRadius={fs * 0.6} fill="#f97316" />
-                        <Text x={-fs * 1.6} y={fs * 0.08} width={fs * 3.2} align="center" text={`${q} ?`} fontSize={fs * 0.9} fontStyle="700" fill="#fff" fontFamily="IBM Plex Sans" />
+                      <Group y={fs * 0.9}>
+                        <Rect x={-fs * 1.6} y={0} width={fs * 3.2} height={fs * 1.25} cornerRadius={fs * 0.6} fill="#f97316" />
+                        <Text x={-fs * 1.6} y={fs * 0.18} width={fs * 3.2} align="center" text={`${q} ?`} fontSize={fs * 0.9} fontStyle="700" fill="#fff" fontFamily="IBM Plex Sans" listening={false} />
                       </Group>
                     )}
                   </Group>
