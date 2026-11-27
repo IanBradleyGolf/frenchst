@@ -73,7 +73,14 @@ export function mirrorRoom(r: Room, a: Axis, dwelling: string): Room {
     const p = reflect(r.points[i], r.points[i + 1], a);
     pts.push(p.x, p.y);
   }
-  return { ...r, id: uid(), points: pts, dwelling };
+  let label = r.label;
+  if (label) {
+    const c = centroid(r.points);
+    const from = reflect(c.x, c.y, a);
+    const to = reflect(c.x + label.dx, c.y + label.dy, a);
+    label = { dx: to.x - from.x, dy: to.y - from.y };
+  }
+  return { ...r, id: uid(), points: pts, dwelling, label };
 }
 
 export function distance(x1: number, y1: number, x2: number, y2: number) {

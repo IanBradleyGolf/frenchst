@@ -6,7 +6,7 @@ import { useStore, type View } from '../store';
 import { centroid, distance, roomAt, uid } from '../geometry';
 import { libraryMap, unknownComponent } from '../schedule';
 import { EXTENT } from '../symbols';
-import type { Floor, Item } from '../types';
+import type { Floor, Item, Room } from '../types';
 import { SymbolShape } from './SymbolShape';
 import { createRoom } from '../rooms';
 import { isVisible } from '../layers';
@@ -517,46 +517,8 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
             {showRooms &&
               floor.rooms.map((r) => {
                 const col = dwellingColor(data.dwellings, r.dwelling);
-                const c = centroid(r.points);
                 const sel = roomSel?.id === r.id;
-                const q = openQuestions(r);
-                const fs = Math.max(3, 10 / v.zoom);
-                return (
-                  <Group key={r.id}>
-                    {q > 0 && (
-                      <Group
-                        x={c.x}
-                        y={c.y + fs * 1.3}
-                        onMouseDown={(e) => {
-                          if (tool !== 'select') return;
-                          e.cancelBubble = true;
-                          select({ kind: 'room', id: r.id });
-                        }}
-                      >
-                        <Rect x={-fs * 1.6} y={-fs * 0.1} width={fs * 3.2} height={fs * 1.25} cornerRadius={fs * 0.6} fill="#f97316" />
-                        <Text x={-fs * 1.6} y={fs * 0.08} width={fs * 3.2} align="center" text={`${q} ?`} fontSize={fs * 0.9} fontStyle="700" fill="#fff" fontFamily="IBM Plex Sans" />
-                      </Group>
-                    )}
-                    <Line name="room" points={r.points} closed fill={col + (sel ? '30' : '14')} stroke={col} strokeWidth={(sel ? 2 : 1) / v.zoom} dash={sel ? undefined : [4 / v.zoom, 3 / v.zoom]} listening={false} />
-                    <Text
-                      x={c.x - 60}
-                      y={c.y - 5 / v.zoom}
-                      width={120}
-                      align="center"
-                      text={r.name}
-                      fontSize={Math.max(3, 10 / v.zoom)}
-                      fontFamily="IBM Plex Sans"
-                      fontStyle="600"
-                      fill={col}
-                      opacity={0.9}
-                      onMouseDown={(e) => {
-                        if (tool !== 'select') return;
-                        e.cancelBubble = true;
-                        select({ kind: 'room', id: r.id });
-                      }}
-                    />
-                  </Group>
-                );
+                return <Line key={r.id} name="room" points={r.points} closed fill={col + (sel ? '30' : '14')} stroke={col} strokeWidth={(sel ? 2 : 1) / v.zoom} dash={sel ? undefined : [4 / v.zoom, 3 / v.zoom]} listening={false} />;
               })}
 
             {roomSel &&
@@ -703,6 +665,48 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                 </Group>
               );
             })}
+
+            {/* Room labels sit above the components and can be dragged clear of them. Double-click to recentre. */}
+            {showRooms &&
+              floor.rooms.map((r) => {
+                const col = dwellingColor(data.dwellings, r.dwelling);
+                const c = centroid(r.points);
+                const lx = c.x + (r.label?.dx ?? 0), ly = c.y + (r.label?.dy ?? 0);
+                const q = openQuestions(r);
+                const fs = Math.max(3, 10 / v.zoom);
+                const pick = (e: Konva.KonvaEventObject<MouseEvent>) => {
+                  if (tool !== 'select' || space || e.evt.button !== 0) return;
+                  e.cancelBubble = true;
+                  select({ kind: 'room', id: r.id });
+                };
+                const setLabel = (label: Room['label']) =>
+                  mutate((d) => {
+                    const room = d.floors.find((f) => f.id === floor.id)!.rooms.find((x) => x.id === r.id)!;
+                    if (label) room.label = label;
+                    else delete room.label;
+                  });
+                return (
+                  <Group
+                    key={'lbl-' + r.id}
+                    x={lx}
+                    y={ly}
+                    draggable={tool === 'select' && !space}
+                    onMouseDown={pick}
+                    onMouseEnter={(e) => tool === 'select' && (e.target.getStage()!.container().style.cursor = 'move')}
+                    onMouseLeave={(e) => (e.target.getStage()!.container().style.cursor = '')}
+                    onDragEnd={(e) => setLabel({ dx: e.target.x() - c.x, dy: e.target.y() - c.y })}
+                    onDblClick={() => setLabel(undefined)}
+                  >
+                    <Text x={-60} y={-5 / v.zoom} width={120} align="center" text={r.name} fontSize={fs} fontFamily="IBM Plex Sans" fontStyle="600" fill={col} opacity={0.9} />
+                    {q > 0 && (
+                      <Group y={fs * 1.3}>
+                        <Rect x={-fs * 1.6} y={-fs * 0.1} width={fs * 3.2} height={fs * 1.25} cornerRadius={fs * 0.6} fill="#f97316" />
+                        <Text x={-fs * 1.6} y={fs * 0.08} width={fs * 3.2} align="center" text={`${q} ?`} fontSize={fs * 0.9} fontStyle="700" fill="#fff" fontFamily="IBM Plex Sans" />
+                      </Group>
+                    )}
+                  </Group>
+                );
+              })}
 
             {tool === 'select' && selection.kind === 'items' && selection.ids.length === 1 && !rotPrev && (() => {
               const it = shown.find((i) => i.id === selection.ids[0]);

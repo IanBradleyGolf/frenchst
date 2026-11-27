@@ -83,6 +83,7 @@ export interface Room {
   dwelling: string; // e.g. "Dwelling 1", "Dwelling 2", "Common"
   points: number[]; // flat [x1,y1,x2,y2,...] in page points
   notes?: RoomNote[];
+  label?: { dx: number; dy: number }; // label offset from the room's centroid, in page points (dragged by the user)
 }
 
 export interface Item {

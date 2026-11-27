@@ -252,3 +252,9 @@ details summary { cursor: pointer; color: var(--ink-2); }
 .tbl tr.find:hover td { background: var(--hover, #fff4ed); }
 .find-hint { color: #ea580c; font-size: 11px; margin-left: 4px; opacity: 0; }
 .tbl tr.find:hover .find-hint { opacity: 1; }
+
+/* Copy rooms panel */
+.stack.tight { gap: 4px; }
+button.link { background: none; border: none; padding: 0; color: #ea580c; cursor: pointer; font-size: 12px; }
+button.link:hover { text-decoration: underline; }
+.copy-rooms-list { max-height: 220px; overflow: auto; }

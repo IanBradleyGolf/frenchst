@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useFloor, useStore } from '../store';
-import { distance, mirrorItems, mirrorRoom, roomAt, polygonArea } from '../geometry';
+import { distance, mirrorItems, mirrorRoom, roomAt, polygonArea, uid } from '../geometry';
 import { libraryMap, NO_ROOM, placedItems, totals } from '../schedule';
 import { svgFor } from '../symbols';
 import type { Component, Floor, TextNote } from '../types';
@@ -353,7 +353,80 @@ function Rooms({ floor }: { floor: Floor }) {
           {floor.rooms.length === 0 && <tr><td colSpan={4} className="muted">No rooms yet. Draw rooms so every item is counted against a room and dwelling.</td></tr>}
         </tbody>
       </table>
+      {data.floors.length > 1 && floor.rooms.length > 0 && <CopyRooms floor={floor} />}
       <DwellingEditor />
+    </div>
+  );
+}
+
+/** Copy this floor's rooms onto other floors at the same positions (e.g. Low Voltage → Powerpoints for the same level). */
+function CopyRooms({ floor }: { floor: Floor }) {
+  const floors = useStore((s) => s.project!.data.floors);
+  const { mutate } = useStore.getState();
+  const others = floors.filter((f) => f.id !== floor.id);
+  const [open, setOpen] = useState(false);
+  const [targets, setTargets] = useState<string[]>([]);
+  const [roomIds, setRoomIds] = useState<string[]>(() => floor.rooms.map((r) => r.id));
+  const [same, setSame] = useState<'skip' | 'replace'>('skip');
+  const [done, setDone] = useState<string | null>(null);
+  const sorted = [...floor.rooms].sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }));
+  const clashes = others
+    .filter((f) => targets.includes(f.id))
+    .reduce((n, f) => n + floor.rooms.filter((r) => roomIds.includes(r.id) && f.rooms.some((x) => x.name === r.name)).length, 0);
+  const otherSheet = others.filter((f) => targets.includes(f.id) && (f.planId !== floor.planId || f.page !== floor.page));
+  const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
+
+  function run() {
+    let added = 0, replaced = 0, skipped = 0;
+    mutate((d) => {
+      const picked = d.floors.find((f) => f.id === floor.id)!.rooms.filter((r) => roomIds.includes(r.id));
+      for (const t of d.floors.filter((f) => targets.includes(f.id))) {
+        for (const r of picked) {
+          const i = t.rooms.findIndex((x) => x.name === r.name);
+          const copy = { id: uid(), name: r.name, dwelling: r.dwelling, points: [...r.points], ...(r.label ? { label: { ...r.label } } : {}) };
+          if (i >= 0 && same === 'skip') { skipped++; continue; }
+          if (i >= 0) { t.rooms[i] = { ...copy, notes: t.rooms[i].notes }; replaced++; }
+          else { t.rooms.push(copy); added++; }
+        }
+      }
+    });
+    setDone([`${added} added`, replaced ? `${replaced} replaced` : '', skipped ? `${skipped} skipped (already there)` : ''].filter(Boolean).join(', '));
+    setTargets([]);
+  }
+
+  if (!open) return <button onClick={() => { setOpen(true); setDone(null); }}>Copy rooms to another floor…</button>;
+  return (
+    <div className="card-inset stack">
+      <b>Copy rooms from {floor.name}</b>
+      <div className="small muted">To floor</div>
+      <div className="stack tight">
+        {others.map((f) => (
+          <label key={f.id} className="row gap small"><input type="checkbox" checked={targets.includes(f.id)} onChange={() => setTargets(toggle(targets, f.id))} />{f.name}<span className="muted">({f.rooms.length} rooms)</span></label>
+        ))}
+      </div>
+      <div className="row gap small muted">
+        Rooms ({roomIds.length} of {floor.rooms.length})
+        <button className="link" onClick={() => setRoomIds(floor.rooms.map((r) => r.id))}>All</button>
+        <button className="link" onClick={() => setRoomIds([])}>None</button>
+      </div>
+      <div className="stack tight copy-rooms-list">
+        {sorted.map((r) => (
+          <label key={r.id} className="row gap small"><input type="checkbox" checked={roomIds.includes(r.id)} onChange={() => setRoomIds(toggle(roomIds, r.id))} />{r.name}</label>
+        ))}
+      </div>
+      {clashes > 0 && (
+        <div className="stack tight small">
+          <span>{clashes} room{clashes === 1 ? '' : 's'} already exist on the target floor{targets.length > 1 ? 's' : ''} with the same name:</span>
+          <label className="row gap"><input type="radio" checked={same === 'skip'} onChange={() => setSame('skip')} />Skip them</label>
+          <label className="row gap"><input type="radio" checked={same === 'replace'} onChange={() => setSame('replace')} />Replace their outline (keeps their notes)</label>
+        </div>
+      )}
+      {otherSheet.length > 0 && <p className="small warn">{otherSheet.map((f) => f.name).join(', ')} {otherSheet.length === 1 ? 'uses' : 'use'} a different drawing, so the rooms land at the same page position and may need nudging.</p>}
+      {done && <p className="small muted">Done: {done}.</p>}
+      <div className="row gap">
+        <button className="primary" disabled={!targets.length || !roomIds.length} onClick={run}>Copy {roomIds.length} room{roomIds.length === 1 ? '' : 's'}</button>
+        <button onClick={() => setOpen(false)}>Close</button>
+      </div>
     </div>
   );
 }
