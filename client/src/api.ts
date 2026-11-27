@@ -21,6 +21,7 @@ export const api = {
   createProject: (name: string, data: ProjectData) => call<Project>('/api/projects', { method: 'POST', body: JSON.stringify({ name, data }) }),
   saveProject: (id: string, name: string, data: ProjectData, version: number) =>
     call<ProjectSummary>(`/api/projects/${id}`, { method: 'PUT', body: JSON.stringify({ name, data, version }) }),
+  copyProject: (id: string, name: string) => call<Project>(`/api/projects/${id}/copy`, { method: 'POST', body: JSON.stringify({ name }) }),
   deleteProject: (id: string) => call<void>(`/api/projects/${id}`, { method: 'DELETE' }),
   listPlans: (projectId: string) => call<PlanFile[]>(`/api/projects/${projectId}/plans`),
   uploadPlan: (projectId: string, file: File) => {

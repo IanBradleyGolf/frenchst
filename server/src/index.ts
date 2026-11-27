@@ -78,6 +78,18 @@ app.delete(
   }),
 );
 
+app.post(
+  '/api/projects/:id/copy',
+  wrap(async (req, res) => {
+    if (!checkId(req, res)) return;
+    const name = String(req.body?.name ?? '').trim();
+    if (!name) return res.status(400).json({ error: 'Name is required' });
+    const p = await store.copyProject(req.params.id, name.slice(0, 200), userOf(req));
+    if (!p) return res.status(404).json({ error: 'Project not found' });
+    res.status(201).json(p);
+  }),
+);
+
 app.get(
   '/api/projects/:id/plans',
   wrap(async (req, res) => {

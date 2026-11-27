@@ -8,6 +8,8 @@ export function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('48–48A French St, Maroubra');
   const [busy, setBusy] = useState(false);
+  const [copying, setCopying] = useState<{ id: string; name: string } | null>(null);
+  const [copyBusy, setCopyBusy] = useState(false);
 
   useEffect(() => {
     api.listProjects().then(setList).catch((e) => setError(e.message));
@@ -23,6 +25,19 @@ export function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
     } catch (err: any) {
       setError(err.message);
       setBusy(false);
+    }
+  }
+
+  async function copy(e: React.FormEvent) {
+    e.preventDefault();
+    if (!copying || !copying.name.trim()) return;
+    setCopyBusy(true);
+    try {
+      const p = await api.copyProject(copying.id, copying.name.trim());
+      onOpen(p.id);
+    } catch (err: any) {
+      setError(err.message);
+      setCopyBusy(false);
     }
   }
 
@@ -47,13 +62,39 @@ export function ProjectList({ onOpen }: { onOpen: (id: string) => void }) {
           <ul className="project-list">
             {list?.map((p) => (
               <li key={p.id}>
-                <button onClick={() => onOpen(p.id)}>
-                  <span className="pl-name">{p.name}</span>
-                  <span className="pl-meta">
-                    Saved {new Date(p.updatedAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}
-                    {p.updatedBy ? ` by ${p.updatedBy}` : ''}
-                  </span>
-                </button>
+                <div className="pl-row">
+                  <button className="pl-open" onClick={() => onOpen(p.id)}>
+                    <span className="pl-name">{p.name}</span>
+                    <span className="pl-meta">
+                      Saved {new Date(p.updatedAt).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' })}
+                      {p.updatedBy ? ` by ${p.updatedBy}` : ''}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="pl-copy"
+                    title="Copy this project, including its plans and revisions"
+                    onClick={() => setCopying(copying?.id === p.id ? null : { id: p.id, name: `${p.name} (copy)` })}
+                  >
+                    Copy
+                  </button>
+                </div>
+                {copying?.id === p.id && (
+                  <form className="pl-copy-form" onSubmit={copy}>
+                    <input
+                      autoFocus
+                      value={copying.name}
+                      onChange={(e) => setCopying({ ...copying, name: e.target.value })}
+                      aria-label="Name for the copy"
+                    />
+                    <button className="primary" disabled={copyBusy || !copying.name.trim()}>
+                      {copyBusy ? 'Copying…' : 'Create copy'}
+                    </button>
+                    <button type="button" onClick={() => setCopying(null)} disabled={copyBusy}>
+                      Cancel
+                    </button>
+                  </form>
+                )}
               </li>
             ))}
           </ul>

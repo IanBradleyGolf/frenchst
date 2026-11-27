@@ -42,6 +42,8 @@ export interface Store {
   createProject(name: string, data: unknown, user: string | null): Promise<ProjectRecord>;
   saveProject(id: string, name: string, data: unknown, expectedVersion: number, user: string | null): Promise<ProjectSummary>;
   deleteProject(id: string): Promise<void>;
+  /** Duplicate a project with its plan PDFs and revisions. Returns null if the source doesn't exist. */
+  copyProject(id: string, name: string, user: string | null): Promise<ProjectRecord | null>;
   addPlan(projectId: string, fileName: string, content: Buffer): Promise<PlanRecord>;
   listPlans(projectId: string): Promise<PlanRecord[]>;
   getPlanContent(id: string): Promise<{ fileName: string; content: Buffer } | null>;
@@ -53,6 +55,16 @@ export interface Store {
 
 const now = () => new Date().toISOString();
 const newId = () => crypto.randomUUID();
+
+/**
+ * Swap every old plan id for its new one inside a JSON string. Ids are UUIDs, so a text replace is safe.
+ * Case-insensitive because SQL Server returns UNIQUEIDENTIFIERs in upper case.
+ */
+function remapIds(json: string, map: Map<string, string>) {
+  let out = json;
+  for (const [from, to] of map) out = out.replace(new RegExp(from, 'gi'), to);
+  return out;
+}
 
 /* ---------------- Azure SQL ---------------- */
 
@@ -163,6 +175,51 @@ export class SqlStore implements Store {
       .query(
         'DELETE FROM dbo.fs_plans WHERE project_id=@id; DELETE FROM dbo.fs_revisions WHERE project_id=@id; DELETE FROM dbo.fs_projects WHERE id=@id',
       );
+  }
+  async copyProject(id: string, name: string, user: string | null) {
+    const src = await this.req().input('id', sql.UniqueIdentifier, id).query('SELECT data FROM dbo.fs_projects WHERE id=@id');
+    if (!src.recordset[0]) return null;
+    const plans = await this.req().input('id', sql.UniqueIdentifier, id).query('SELECT id FROM dbo.fs_plans WHERE project_id=@id');
+    const map = new Map<string, string>(plans.recordset.map((r) => [String(r.id).toLowerCase(), newId()]));
+    const revs = await this.req().input('id', sql.UniqueIdentifier, id).query('SELECT label, note, data, created_at, created_by FROM dbo.fs_revisions WHERE project_id=@id');
+    const newPid = newId();
+    const ts = new Date();
+    const dataJson = remapIds(src.recordset[0].data, map);
+    const tx = new sql.Transaction(this.pool);
+    await tx.begin();
+    try {
+      await new sql.Request(tx)
+        .input('id', sql.UniqueIdentifier, newPid)
+        .input('name', sql.NVarChar(200), name)
+        .input('data', sql.NVarChar(sql.MAX), dataJson)
+        .input('ts', sql.DateTime2, ts)
+        .input('user', sql.NVarChar(200), user)
+        .query('INSERT INTO dbo.fs_projects (id,name,version,data,updated_at,updated_by) VALUES (@id,@name,1,@data,@ts,@user)');
+      for (const [from, to] of map) {
+        // Copy the PDF inside the database so the blob never round-trips through Node.
+        await new sql.Request(tx)
+          .input('old', sql.UniqueIdentifier, from)
+          .input('new', sql.UniqueIdentifier, to)
+          .input('pid', sql.UniqueIdentifier, newPid)
+          .query('INSERT INTO dbo.fs_plans (id,project_id,file_name,size,content,uploaded_at) SELECT @new,@pid,file_name,size,content,uploaded_at FROM dbo.fs_plans WHERE id=@old');
+      }
+      for (const r of revs.recordset) {
+        await new sql.Request(tx)
+          .input('id', sql.UniqueIdentifier, newId())
+          .input('pid', sql.UniqueIdentifier, newPid)
+          .input('label', sql.NVarChar(100), r.label)
+          .input('note', sql.NVarChar(1000), r.note)
+          .input('data', sql.NVarChar(sql.MAX), remapIds(r.data, map))
+          .input('ts', sql.DateTime2, r.created_at)
+          .input('user', sql.NVarChar(200), r.created_by)
+          .query('INSERT INTO dbo.fs_revisions (id,project_id,label,note,data,created_at,created_by) VALUES (@id,@pid,@label,@note,@data,@ts,@user)');
+      }
+      await tx.commit();
+    } catch (e) {
+      await tx.rollback();
+      throw e;
+    }
+    return { id: newPid, name, version: 1, updatedAt: ts.toISOString(), updatedBy: user, data: JSON.parse(dataJson) };
   }
   async addPlan(projectId: string, fileName: string, content: Buffer) {
     const id = newId();
@@ -291,6 +348,26 @@ export class FileStore implements Store {
   }
   async deleteProject(id: string) {
     await fs.rm(this.p('projects', `${safe(id)}.json`), { force: true });
+  }
+  async copyProject(id: string, name: string, user: string | null) {
+    const src = await this.getProject(id);
+    if (!src) return null;
+    const plans = await this.listPlans(id);
+    const map = new Map<string, string>(plans.map((p) => [p.id, newId()]));
+    const rec: ProjectRecord = { id: newId(), name, version: 1, updatedAt: now(), updatedBy: user, data: JSON.parse(remapIds(JSON.stringify(src.data), map)) };
+    for (const p of plans) {
+      const to = map.get(p.id)!;
+      await fs.copyFile(this.p('plans', `${p.id}.pdf`), this.p('plans', `${to}.pdf`));
+      await fs.writeFile(this.p('plans', `${to}.json`), JSON.stringify({ ...p, id: to, projectId: rec.id }));
+    }
+    for (const r of await this.listRevisions(id)) {
+      const full = await this.getRevision(r.id);
+      if (!full) continue;
+      const copy = { ...full, id: newId(), projectId: rec.id, data: JSON.parse(remapIds(JSON.stringify(full.data), map)) };
+      await fs.writeFile(this.p('revisions', `${copy.id}.json`), JSON.stringify(copy));
+    }
+    await fs.writeFile(this.p('projects', `${rec.id}.json`), JSON.stringify(rec));
+    return rec;
   }
   async addPlan(projectId: string, fileName: string, content: Buffer) {
     const rec: PlanRecord = { id: newId(), projectId, fileName, size: content.length, uploadedAt: now() };

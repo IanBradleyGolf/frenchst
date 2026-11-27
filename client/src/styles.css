@@ -77,6 +77,12 @@ ul.plain { margin: 6px 0; padding-left: 18px; }
 .project-list button { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; }
 .pl-name { font-weight: 500; }
 .pl-meta { font-size: 12px; color: var(--muted); }
+.pl-row { display: flex; gap: 6px; align-items: stretch; }
+.project-list .pl-row .pl-open { flex: 1; min-width: 0; }
+.project-list .pl-row .pl-copy { width: auto; flex: none; flex-direction: row; align-items: center; padding: 0 14px; }
+.pl-copy-form { display: flex; gap: 6px; margin-top: 6px; }
+.pl-copy-form input { flex: 1; min-width: 0; }
+.project-list .pl-copy-form button { width: auto; flex-direction: row; padding: 6px 12px; }
 
 /* ---------- Editor shell ---------- */
 .editor { height: 100%; display: flex; flex-direction: column; }
