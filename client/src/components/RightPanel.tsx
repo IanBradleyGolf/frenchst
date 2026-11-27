@@ -384,6 +384,7 @@ function Schedule() {
   const selection = useStore((s) => s.selection);
   const [picked, setPicked] = useState('');
   const [view, setView] = useState<'room' | 'component'>('room');
+  const [q, setQ] = useState('');
   const [replacing, setReplacing] = useState<string | null | undefined>(undefined); // undefined = closed, null = no code preset
 
   const items = useMemo(() => placedItems(data), [data]);
@@ -430,6 +431,19 @@ function Schedule() {
     [data, items],
   );
 
+  // Search: a component matches on code, name or category (all its rooms shown); otherwise only its rooms that match are shown.
+  const shown = useMemo(() => {
+    const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+    if (!terms.length) return usage;
+    const hit = (text: string) => terms.every((t) => text.toLowerCase().includes(t));
+    return usage.flatMap((u) => {
+      const c = u.component;
+      if (hit(`${c.code} ${c.name} ${c.category}`)) return [u];
+      const rooms = u.rooms.filter((r) => hit(`${c.code} ${c.name} ${c.category} ${r.room === NO_ROOM ? 'not in a room' : r.room} ${r.floor}`));
+      return rooms.length ? [{ ...u, rooms }] : [];
+    });
+  }, [usage, q]);
+
   const toggle = (
     <div className="seg">
       <button className={view === 'room' ? 'sel' : ''} onClick={() => setView('room')}>By room</button>
@@ -443,12 +457,15 @@ function Schedule() {
           {toggle}
           <button onClick={() => setReplacing(null)} disabled={usage.length === 0} title="Change every instance of one component to another, e.g. all DL1 to DL3">Replace…</button>
         </div>
+        <div className="search-wrap">
+          <input className="search" type="search" placeholder="Search code, component or room" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') setQ(''); }} aria-label="Search schedule" />
+        </div>
         {replacing !== undefined && <ReplaceComponent key={replacing ?? ''} from={replacing ?? undefined} onClose={() => setReplacing(undefined)} />}
         <table className="tbl">
           <thead>
             <tr><th></th><th>Code</th><th>Component / room</th><th className="num">Qty</th></tr>
           </thead>
-          {usage.map((u) => (
+          {shown.map((u) => (
             <tbody key={u.component.code}>
               <tr className="comp-row">
                 <td><span dangerouslySetInnerHTML={{ __html: svgFor(u.component.symbol, u.component.color, 16) }} /></td>
@@ -467,6 +484,7 @@ function Schedule() {
             </tbody>
           ))}
           {usage.length === 0 && <tbody><tr><td colSpan={4} className="muted">Nothing placed yet.</td></tr></tbody>}
+          {usage.length > 0 && shown.length === 0 && <tbody><tr><td colSpan={4} className="muted">Nothing matches “{q.trim()}”.</td></tr></tbody>}
         </table>
       </div>
     );
