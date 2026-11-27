@@ -13,6 +13,8 @@ export interface Placed {
   circuit: string;
   len?: number; // mm
   wid?: number; // mm
+  mult: number; // how many duplexes this item is built in: copies, or 1 for one-duplex-only rooms
+  oneSide: boolean; // sits in a room marked as one duplex only
 }
 
 export const NO_ROOM = '(no room)';
@@ -20,11 +22,13 @@ export const NO_DWELLING = '(unassigned)';
 
 export function placedItems(data: ProjectData, floors: Floor[] = data.floors): Placed[] {
   const out: Placed[] = [];
+  const n = copiesOf(data);
+  const single = new Set(data.singleRooms ?? []);
   for (const f of floors) {
     for (const it of f.items) {
       if (!isVisible(data, it) || !inCrop(f, it)) continue;
       const r = roomAt(f, it.x, it.y);
-      out.push({ floor: f, itemId: it.id, code: it.code, room: r?.name ?? NO_ROOM, dwelling: r?.dwelling ?? NO_DWELLING, circuit: it.circuit ?? '', len: it.len, wid: it.wid });
+      out.push({ floor: f, itemId: it.id, code: it.code, room: r?.name ?? NO_ROOM, dwelling: r?.dwelling ?? NO_DWELLING, circuit: it.circuit ?? '', len: it.len, wid: it.wid, mult: r && single.has(r.name) ? 1 : n, oneSide: !!r && single.has(r.name) });
     }
   }
   return out;
@@ -32,7 +36,9 @@ export function placedItems(data: ProjectData, floors: Floor[] = data.floors): P
 
 export interface Line {
   component: Component;
-  qty: number;
+  qty: number; // as drawn (one duplex)
+  qtyAll: number; // built quantity across the duplexes: × copies, except one-duplex-only rooms counted once
+  qtySingle: number; // part of qty that sits in one-duplex-only rooms
   supply: number;
   install: number;
   total: number;
@@ -49,12 +55,17 @@ export function unknownComponent(code: string): Component {
 export function totals(data: ProjectData, items: Placed[]): Line[] {
   const lib = libraryMap(data);
   const counts = new Map<string, number>();
+  const all = new Map<string, number>();
+  const single = new Map<string, number>();
   for (const p of items) {
     const c = lib.get(p.code);
     // Length-drawn components are counted in metres.
     const q = c?.symbol === 'profile' || c?.symbol === 'loop' ? metresOf(p, c) : 1;
     counts.set(p.code, (counts.get(p.code) ?? 0) + q);
+    all.set(p.code, (all.get(p.code) ?? 0) + q * p.mult);
+    if (p.oneSide) single.set(p.code, (single.get(p.code) ?? 0) + q);
   }
+  const r2 = (x: number) => Math.round(x * 100) / 100;
   const order = new Map([...data.library].sort(compareComponents).map((c, i) => [c.code, i]));
   return [...counts.entries()]
     .map(([code, raw]) => {
@@ -62,7 +73,7 @@ export function totals(data: ProjectData, items: Placed[]): Line[] {
       const qty = Math.round(raw * 100) / 100;
       const supply = qty * c.supplyRate;
       const install = qty * c.installRate;
-      return { component: c, qty, supply, install, total: supply + install };
+      return { component: c, qty, qtyAll: r2(all.get(code) ?? 0), qtySingle: r2(single.get(code) ?? 0), supply, install, total: supply + install };
     })
     .sort((a, b) => (order.get(a.component.code) ?? 999) - (order.get(b.component.code) ?? 999));
 }

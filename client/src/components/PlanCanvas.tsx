@@ -684,7 +684,8 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                 const lx = c.x + (r.label?.dx ?? 0), ly = c.y + (r.label?.dy ?? 0);
                 const q = openQuestions(r);
                 const fs = Math.max(3, 10 / v.zoom);
-                const tw = textWidth(r.name, fs);
+                const label = (data.singleRooms ?? []).includes(r.name) ? `${r.name} · 1 duplex` : r.name;
+                const tw = textWidth(label, fs);
                 const padX = 5 / v.zoom, padY = 3 / v.zoom;
                 const movable = (tool === 'select' || tool === 'place') && !space;
                 const hot = labelHover === r.id;
@@ -735,7 +736,7 @@ export function PlanCanvas({ floor, showLabels, showRooms, showWires = true }: {
                       shadowBlur={hot ? 6 / v.zoom : 0}
                       shadowOpacity={0.25}
                     />
-                    <Text x={-tw / 2} y={-fs / 2} text={r.name} fontSize={fs} fontFamily="IBM Plex Sans" fontStyle="600" fill={col} listening={false} />
+                    <Text x={-tw / 2} y={-fs / 2} text={label} fontSize={fs} fontFamily="IBM Plex Sans" fontStyle="600" fill={col} listening={false} />
                     {q > 0 && (
                       <Group y={fs * 0.9}>
                         <Rect x={-fs * 1.6} y={0} width={fs * 3.2} height={fs * 1.25} cornerRadius={fs * 0.6} fill="#f97316" />

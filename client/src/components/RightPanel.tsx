@@ -310,6 +310,22 @@ function Rooms({ floor }: { floor: Floor }) {
           <select id="rm-dw" value={sel.dwelling} onChange={(e) => upd((r) => (r.dwelling = e.target.value))}>
             {data.dwellings.map((d) => <option key={d}>{d}</option>)}
           </select>
+          <label className="row gap small" title="Applies to every room with this name, on every floor">
+            <input
+              type="checkbox"
+              checked={(data.singleRooms ?? []).includes(sel.name)}
+              onChange={(e) => {
+                const on = e.target.checked;
+                mutate((d) => {
+                  const set = new Set(d.singleRooms ?? []);
+                  if (on) set.add(sel.name);
+                  else set.delete(sel.name);
+                  d.singleRooms = [...set].sort();
+                });
+              }}
+            />
+            Components here are for 1 duplex only (counted once in exports, not ×{data.copies ?? 2})
+          </label>
           <p className="muted small">Drag the corner handles on the plan to adjust. {area(sel.points)}</p>
           <div className="row gap wrap">
             <button
@@ -339,20 +355,40 @@ function Rooms({ floor }: { floor: Floor }) {
       )}
       <table className="tbl">
         <thead>
-          <tr><th>Room</th><th>Dwelling</th><th className="num">Items</th><th className="num" title="Open questions">?</th></tr>
+          <tr><th>Room</th><th>Dwelling</th><th className="num" title="Duplexes the room's components are built in">Built</th><th className="num">Items</th><th className="num" title="Open questions">?</th></tr>
         </thead>
         <tbody>
-          {[...floor.rooms].sort((a, b) => a.dwelling.localeCompare(b.dwelling) || a.name.localeCompare(b.name)).map((r) => (
+          {[...floor.rooms].sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true, sensitivity: 'base' })).map((r) => (
             <tr key={r.id} className={sel?.id === r.id ? 'sel' : ''} onClick={() => select({ kind: 'room', id: r.id })}>
               <td>{r.name}</td>
               <td><span className="dot" style={{ background: dwellingColor(data.dwellings, r.dwelling) }} />{r.dwelling}</td>
+              <td className="num">{(data.singleRooms ?? []).includes(r.name) ? <b className="one-side">×1</b> : <span className="muted">×{data.copies ?? 2}</span>}</td>
               <td className="num">{countIn(r.id)}</td>
               <td className="num">{openQuestions(r) || ''}</td>
             </tr>
           ))}
-          {floor.rooms.length === 0 && <tr><td colSpan={4} className="muted">No rooms yet. Draw rooms so every item is counted against a room and dwelling.</td></tr>}
+          {floor.rooms.length === 0 && <tr><td colSpan={5} className="muted">No rooms yet. Draw rooms so every item is counted against a room and dwelling.</td></tr>}
         </tbody>
       </table>
+      {floor.rooms.length > 0 && (() => {
+        const names = [...new Set(floor.rooms.map((r) => r.name))];
+        const single = new Set(data.singleRooms ?? []);
+        const allOn = names.every((n) => single.has(n));
+        return (
+          <button
+            title="Rooms with the same name on other floors (e.g. Lighting, Low Voltage, Powerpoints) follow too"
+            onClick={() =>
+              mutate((d) => {
+                const set = new Set(d.singleRooms ?? []);
+                for (const n of names) allOn ? set.delete(n) : set.add(n);
+                d.singleRooms = [...set].sort();
+              })
+            }
+          >
+            {allOn ? `Count every room on this floor ×${data.copies ?? 2} again` : 'Mark every room on this floor as 1 duplex only'}
+          </button>
+        );
+      })()}
       {data.floors.length > 1 && floor.rooms.length > 0 && <CopyRooms floor={floor} />}
       <DwellingEditor />
     </div>

@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import { PDFDocument, StandardFonts, rgb, degrees, type PDFPage, type PDFFont } from 'pdf-lib';
 import { planBytes } from './pdf';
 import { pdfSafe } from './marks';
-import { byRoom, copiesOf, libraryMap, placedItems, totals, unknownComponent } from './schedule';
+import { copiesOf, libraryMap, NO_ROOM, placedItems, totals, unknownComponent } from './schedule';
 import { halfUnits, isStretchy, lenOf, primsFor, widOf } from './symbols';
 import { compareComponents } from './library';
 import type { Component, Floor, Project } from './types';
@@ -31,50 +31,39 @@ export function exportExcel(project: Project) {
 
   const tot = totals(data, all);
   const n = copiesOf(data);
+  const anySingle = all.some((p) => p.oneSide);
+  // Quantities only. "As drawn" is the one modelled duplex; the total is ×n except rooms marked 1 duplex only, counted once.
   const sumRows: Record<string, string | number>[] = tot.map((l) => ({
     Code: l.component.code,
     Component: l.component.name,
     Category: l.component.category,
     Control: l.component.control,
-    Supplier: l.component.supplier,
-    'Qty per dwelling': l.qty,
-    [`Qty ×${n}`]: l.qty * n,
-    'Supply rate': l.component.supplyRate,
-    'Install rate': l.component.installRate,
-    [`Supply $ ×${n}`]: l.supply * n,
-    [`Install $ ×${n}`]: l.install * n,
-    [`Total $ ×${n}`]: l.total * n,
+    Unit: unitOf(l.component),
+    'Qty as drawn (1 duplex)': l.qty,
+    ...(anySingle ? { 'Of which in 1-duplex-only rooms': l.qtySingle } : {}),
+    [`Total qty (${n} duplexes)`]: l.qtyAll,
   }));
-  const S = (k: 'qty' | 'supply' | 'install' | 'total') => tot.reduce((a, l) => a + l[k], 0);
-  sumRows.push({ Code: '', Component: 'Total', Category: '', Control: '', Supplier: '', 'Qty per dwelling': S('qty'), [`Qty ×${n}`]: S('qty') * n, 'Supply rate': '', 'Install rate': '', [`Supply $ ×${n}`]: S('supply') * n, [`Install $ ×${n}`]: S('install') * n, [`Total $ ×${n}`]: S('total') * n });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sumRows), 'Totals');
 
-  // Code × dwelling
-  const dwellings = [...new Set(all.map((p) => p.dwelling))];
-  const byDw = tot.map((l) => {
-    const row: Record<string, string | number> = { Code: l.component.code, Component: l.component.name };
-    for (const d of dwellings) row[d] = all.filter((p) => p.code === l.component.code && p.dwelling === d).length;
-    row.Total = l.qty;
-    return row;
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(byDw), 'By dwelling');
-
-  // Room × code matrix
+  // Room × code matrix, one row per room name, quantities for all duplexes
   const codes = tot.map((l) => l.component.code);
-  const rooms = byRoom(all).map((r) => {
-    const row: Record<string, string | number> = { Floor: r.floor, Dwelling: r.dwelling, Room: r.room };
-    for (const c of codes) row[c] = r.counts.get(c) ?? 0;
-    row.Total = r.qty;
+  const roomNames = [...new Set(all.map((p) => p.room))].sort((x, y) => (x === NO_ROOM ? 1 : y === NO_ROOM ? -1 : x.localeCompare(y, 'en', { numeric: true })));
+  const rooms = roomNames.map((room) => {
+    const mine = all.filter((p) => p.room === room);
+    const lines = new Map(totals(data, mine).map((l) => [l.component.code, l]));
+    const row: Record<string, string | number> = { Room: room === NO_ROOM ? 'Not in a room' : room, 'Built in': mine[0].oneSide ? '1 duplex' : `${n} duplexes` };
+    for (const c of codes) row[c] = lines.get(c)?.qtyAll ?? 0;
+    row['Total items'] = [...lines.values()].reduce((t, l) => t + (unitOf(l.component) === 'each' ? l.qtyAll : 0), 0);
     return row;
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rooms), 'By room');
 
-  // Every item
+  // Every item as drawn
   const lib = libraryMap(data);
   const items = all.map((p) => {
     const it = p.floor.items.find((x) => x.id === p.itemId)!;
     const c = lib.get(p.code) ?? unknownComponent(p.code);
-    return { Floor: p.floor.name, Dwelling: p.dwelling, Room: p.room, Code: p.code, Component: c.name, Circuit: p.circuit, Note: it.note ?? '', X: +it.x.toFixed(1), Y: +it.y.toFixed(1) };
+    return { Floor: p.floor.name, Room: p.room === NO_ROOM ? 'Not in a room' : p.room, Code: p.code, Component: c.name, Circuit: p.circuit, 'Built in': p.mult, Note: it.note ?? '' };
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(items), 'Items');
 
@@ -83,7 +72,7 @@ export function exportExcel(project: Project) {
 
   XLSX.utils.book_append_sheet(
     wb,
-    XLSX.utils.json_to_sheet([...data.library].sort(compareComponents).map((c) => ({ Code: c.code, Name: c.name, Category: c.category, Control: c.control, Supplier: c.supplier, 'Supply rate': c.supplyRate, 'Install rate': c.installRate, Notes: c.notes ?? '' }))),
+    XLSX.utils.json_to_sheet([...data.library].sort(compareComponents).map((c) => ({ Code: c.code, Name: c.name, Category: c.category, Control: c.control, Notes: c.notes ?? '' }))),
     'Library',
   );
 
@@ -241,7 +230,8 @@ async function scheduleSheets(out: PDFDocument, project: Project, font: PDFFont,
   y -= 28;
 
   const n = copiesOf(data);
-  const sections: { title: string; floors: Floor[] }[] = [{ title: `Component schedule – one dwelling, quantities and costs for ${n} identical dwellings`, floors: data.floors }];
+  const anySingle = placedItems(data).some((p) => p.oneSide);
+  const sections: { title: string; floors: Floor[] }[] = [{ title: `Component quantities – all ${n} duplexes${anySingle ? ' (rooms marked 1 duplex only are counted once)' : ''}`, floors: data.floors }];
   for (const f of data.floors) sections.push({ title: f.name, floors: [f] });
 
   for (const sec of sections) {
@@ -252,28 +242,27 @@ async function scheduleSheets(out: PDFDocument, project: Project, font: PDFFont,
     page.drawText(sec.title, { x: 40, y, size: 11, font: bold });
     y -= 18;
     line([
-      { t: 'Symbol', x: 40, f: bold }, { t: 'Code', x: 80, f: bold }, { t: 'Component', x: 130, f: bold }, { t: 'Control', x: 470, f: bold }, { t: 'Supplier', x: 560, f: bold },
-      { t: 'Per dwelling', x: 640, w: 60, right: true, f: bold }, { t: `Qty ×${n}`, x: 710, w: 50, right: true, f: bold },
-      { t: 'Supply $', x: 770, w: 70, right: true, f: bold }, { t: 'Install $', x: 850, w: 70, right: true, f: bold }, { t: 'Total $', x: 930, w: 80, right: true, f: bold },
+      { t: 'Symbol', x: 40, f: bold }, { t: 'Code', x: 80, f: bold }, { t: 'Component', x: 130, f: bold }, { t: 'Control', x: 560, f: bold }, { t: 'Unit', x: 650, f: bold },
+      { t: 'As drawn (1 duplex)', x: 690, w: 100, right: true, f: bold },
+      ...(anySingle ? [{ t: 'In 1-duplex rooms', x: 800, w: 100, right: true, f: bold }] : []),
+      { t: `Total (${n} duplexes)`, x: 910, w: 110, right: true, f: bold },
     ]);
     for (const l of tot) {
       drawSymbol(page, bold, l.component, 52, H - y - 3, 0, 4, H);
       line([
-        { t: l.component.code, x: 80 }, { t: l.component.name.slice(0, 60), x: 130 }, { t: l.component.control, x: 470 }, { t: l.component.supplier, x: 560 },
-        { t: String(l.qty), x: 640, w: 60, right: true }, { t: String(l.qty * n), x: 710, w: 50, right: true },
-        { t: fmt(l.supply * n), x: 770, w: 70, right: true }, { t: fmt(l.install * n), x: 850, w: 70, right: true }, { t: fmt(l.total * n), x: 930, w: 80, right: true },
+        { t: l.component.code, x: 80 }, { t: l.component.name.slice(0, 85), x: 130 }, { t: l.component.control, x: 560 }, { t: unitOf(l.component), x: 650 },
+        { t: String(l.qty), x: 690, w: 100, right: true },
+        ...(anySingle ? [{ t: l.qtySingle ? String(l.qtySingle) : '–', x: 800, w: 100, right: true }] : []),
+        { t: String(l.qtyAll), x: 910, w: 110, right: true, f: bold },
       ]);
       if (y < 50) newPage();
     }
-    const S = (k: 'qty' | 'supply' | 'install' | 'total') => tot.reduce((a, l) => a + l[k], 0);
-    line([
-      { t: 'Total', x: 130, f: bold }, { t: String(S('qty')), x: 640, w: 60, right: true, f: bold }, { t: String(S('qty') * n), x: 710, w: 50, right: true, f: bold },
-      { t: fmt(S('supply') * n), x: 770, w: 70, right: true, f: bold }, { t: fmt(S('install') * n), x: 850, w: 70, right: true, f: bold }, { t: fmt(S('total') * n), x: 930, w: 80, right: true, f: bold },
-    ]);
     y -= 14;
   }
-  page.drawText('Rates are ex GST. Supply rates for light fittings from the LA Lounge schedule unless edited; install rates are indicative.', { x: 40, y: 30, size: 7, font });
+  if (anySingle) page.drawText(`Rooms counted for 1 duplex only: ${(data.singleRooms ?? []).join(', ')}`.slice(0, 260), { x: 40, y: 30, size: 7, font });
 }
+
+const unitOf = (c: Component) => (c.symbol === 'profile' || c.symbol === 'loop' ? 'm' : 'each');
 
 function wrap(text: string, f: PDFFont, size: number, width: number) {
   const out: string[] = [];
@@ -325,4 +314,3 @@ function notesSheets(out: PDFDocument, project: Project, font: PDFFont, bold: PD
   }
 }
 
-const fmt = (n: number) => (n ? n.toLocaleString('en-AU', { maximumFractionDigits: 0 }) : '–');

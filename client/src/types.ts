@@ -161,6 +161,7 @@ export interface ProjectData {
   dwellings: string[];
   symbolSize: number; // symbol radius in page points
   copies?: number; // identical dwellings built from this layout (default 2)
+  singleRooms?: string[]; // room names whose components apply to one duplex only (counted once, not × copies)
   hiddenLayers?: string[];
   stdSeen?: string[]; // standard component codes already offered to this project
   library: Component[];

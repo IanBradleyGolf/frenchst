@@ -258,3 +258,5 @@ details summary { cursor: pointer; color: var(--ink-2); }
 button.link { background: none; border: none; padding: 0; color: #ea580c; cursor: pointer; font-size: 12px; }
 button.link:hover { text-decoration: underline; }
 .copy-rooms-list { max-height: 220px; overflow: auto; }
+
+.one-side { color: #ea580c; }
