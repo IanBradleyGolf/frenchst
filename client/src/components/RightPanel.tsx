@@ -385,6 +385,7 @@ function Schedule() {
   const [picked, setPicked] = useState('');
   const [view, setView] = useState<'room' | 'component'>('room');
   const [q, setQ] = useState('');
+  const [loose, setLoose] = useState(false); // By component: only items not inside any room
   const [replacing, setReplacing] = useState<string | null | undefined>(undefined); // undefined = closed, null = no code preset
 
   const items = useMemo(() => placedItems(data), [data]);
@@ -417,19 +418,19 @@ function Schedule() {
   }, [data, items, key]);
   const perMetre = (c: Component) => c.symbol === 'profile' || c.symbol === 'loop';
 
+  const looseCount = useMemo(() => items.filter((p) => p.room === NO_ROOM).length, [items]);
   // Every placed component with its project total and the rooms it sits in.
-  const usage = useMemo(
-    () =>
-      totals(data, items).map((l) => {
-        const mine = items.filter((p) => p.code === l.component.code);
+  const usage = useMemo(() => {
+    const pool = loose ? items.filter((p) => p.room === NO_ROOM) : items;
+    return totals(data, pool).map((l) => {
+        const mine = pool.filter((p) => p.code === l.component.code);
         const rooms = data.floors.flatMap((f) => {
           const here = mine.filter((p) => p.floor.id === f.id);
           return [...new Set(here.map((p) => p.room))].map((room) => ({ floor: f.name, room, qty: totals(data, here.filter((p) => p.room === room))[0]?.qty ?? 0 }));
         });
         return { ...l, rooms };
-      }),
-    [data, items],
-  );
+      });
+  }, [data, items, loose]);
 
   // Search: a component matches on code, name or category (all its rooms shown); otherwise only its rooms that match are shown.
   const shown = useMemo(() => {
@@ -457,6 +458,10 @@ function Schedule() {
           {toggle}
           <button onClick={() => setReplacing(null)} disabled={usage.length === 0} title="Change every instance of one component to another, e.g. all DL1 to DL3">Replace…</button>
         </div>
+        <label className="row gap small" title="Components placed outside every room you've drawn">
+          <input type="checkbox" checked={loose} onChange={(e) => setLoose(e.target.checked)} />
+          Only show components not in a room ({looseCount})
+        </label>
         <div className="search-wrap">
           <input className="search" type="search" placeholder="Search code, component or room" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') setQ(''); }} aria-label="Search schedule" />
         </div>
@@ -483,7 +488,7 @@ function Schedule() {
               ))}
             </tbody>
           ))}
-          {usage.length === 0 && <tbody><tr><td colSpan={4} className="muted">Nothing placed yet.</td></tr></tbody>}
+          {usage.length === 0 && <tbody><tr><td colSpan={4} className="muted">{loose ? 'Every component is inside a room.' : 'Nothing placed yet.'}</td></tr></tbody>}
           {usage.length > 0 && shown.length === 0 && <tbody><tr><td colSpan={4} className="muted">Nothing matches “{q.trim()}”.</td></tr></tbody>}
         </table>
       </div>
