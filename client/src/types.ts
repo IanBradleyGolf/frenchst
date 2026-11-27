@@ -31,6 +31,7 @@ export type SymbolKind =
   | 'keypad'
   | 'sensor'
   | 'touchscreen'
+  | 'blind'
   | 'gpo'
   | 'usb'
   | 'gpo-wp'
