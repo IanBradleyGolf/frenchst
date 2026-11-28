@@ -203,7 +203,6 @@ export async function exportPdf(project: Project, opts: { labels: boolean; rooms
 
   // Legend + schedule pages
   await scheduleSheets(out, project, font, bold);
-  notesSheets(out, project, font, bold);
 
   const bytes = await out.save();
   download(new Blob([bytes], { type: 'application/pdf' }), `${safeName(project.name)} layout ${stamp()}.pdf`);
@@ -257,54 +256,3 @@ function fit(t: string, f: PDFFont, size: number, w: number) {
 }
 
 const unitOf = (c: Component) => (c.symbol === 'profile' || c.symbol === 'loop' ? 'm' : 'each');
-
-function wrap(text: string, f: PDFFont, size: number, width: number) {
-  const out: string[] = [];
-  for (const para of pdfSafe(text).split('\n')) {
-    let line = '';
-    for (const w of para.split(/\s+/)) {
-      const t = line ? line + ' ' + w : w;
-      if (f.widthOfTextAtSize(t, size) > width && line) {
-        out.push(line);
-        line = w;
-      } else line = t;
-    }
-    out.push(line);
-  }
-  return out;
-}
-
-function notesSheets(out: PDFDocument, project: Project, font: PDFFont, bold: PDFFont) {
-  const groups = project.data.floors.flatMap((f) => f.rooms.filter((r) => (r.notes ?? []).length).map((r) => ({ f, r })));
-  if (!groups.length) return;
-  const W = 842, H = 1191; // A3 portrait
-  let page = out.addPage([W, H]);
-  let y = H - 50;
-  const need = (h: number) => {
-    if (y - h < 40) {
-      page = out.addPage([W, H]);
-      y = H - 50;
-    }
-  };
-  page.drawText(`${project.name} – questions & comments`, { x: 40, y, size: 16, font: bold });
-  y -= 26;
-  for (const { f, r } of groups) {
-    need(40);
-    page.drawText(`${f.name} · ${r.name}`, { x: 40, y, size: 11, font: bold });
-    y -= 16;
-    const ns = [...(r.notes ?? [])].sort((a, b) => (a.status === b.status ? a.at.localeCompare(b.at) : a.status === 'open' ? -1 : 1));
-    for (const n of ns) {
-      const head = `${n.kind === 'question' ? (n.status === 'open' ? 'QUESTION (open)' : 'QUESTION (answered)') : 'COMMENT'}${n.for ? ' · for ' + n.for : ''}${n.by ? ' · ' + n.by : ''} · ${n.at.slice(0, 10)}`;
-      const body = wrap(n.text, font, 9, W - 110);
-      const ans = n.answer ? wrap('Answer: ' + n.answer, font, 9, W - 110) : [];
-      need(14 + (body.length + ans.length) * 12);
-      page.drawText(pdfSafe(head), { x: 50, y, size: 7.5, font: bold, color: n.kind === 'question' && n.status === 'open' ? rgb(0.85, 0.35, 0.05) : rgb(0.35, 0.35, 0.35) });
-      y -= 12;
-      for (const l of body) { page.drawText(l, { x: 60, y, size: 9, font }); y -= 12; }
-      for (const l of ans) { page.drawText(l, { x: 60, y, size: 9, font, color: rgb(0.1, 0.4, 0.2) }); y -= 12; }
-      y -= 4;
-    }
-    y -= 8;
-  }
-}
-
