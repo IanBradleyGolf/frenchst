@@ -7,7 +7,7 @@ import { pdfSafe } from './marks';
 import { copiesOf, libraryMap, NO_ROOM, placedItems, totals, unknownComponent } from './schedule';
 import { halfUnits, isStretchy, lenOf, primsFor, widOf } from './symbols';
 import { compareComponents } from './library';
-import type { Component, Floor, Project } from './types';
+import type { Component, Project } from './types';
 
 function download(blob: Blob, name: string) {
   const a = document.createElement('a');
@@ -226,40 +226,34 @@ async function scheduleSheets(out: PDFDocument, project: Project, font: PDFFont,
     page = out.addPage([W, H]);
     y = H - 50;
   };
-  page.drawText(`${project.name} – component schedule`, { x: 40, y, size: 16, font: bold });
-  y -= 28;
-
-  const n = copiesOf(data);
-  const anySingle = placedItems(data).some((p) => p.oneSide);
-  const sections: { title: string; floors: Floor[] }[] = [{ title: `Component quantities – all ${n} duplexes${anySingle ? ' (rooms marked 1 duplex only are counted once)' : ''}`, floors: data.floors }];
-  for (const f of data.floors) sections.push({ title: f.name, floors: [f] });
-
-  for (const sec of sections) {
-    const items = placedItems(data, sec.floors);
-    if (!items.length) continue;
-    const tot = totals(data, items);
-    if (y < 120 + tot.length * 13) newPage();
-    page.drawText(sec.title, { x: 40, y, size: 11, font: bold });
-    y -= 18;
-    line([
-      { t: 'Symbol', x: 40, f: bold }, { t: 'Code', x: 80, f: bold }, { t: 'Component', x: 130, f: bold }, { t: 'Control', x: 560, f: bold }, { t: 'Unit', x: 650, f: bold },
-      { t: 'As drawn (1 duplex)', x: 690, w: 100, right: true, f: bold },
-      ...(anySingle ? [{ t: 'For 1 duplex only', x: 800, w: 100, right: true, f: bold }] : []),
-      { t: `Total (${n} duplexes)`, x: 910, w: 110, right: true, f: bold },
-    ]);
-    for (const l of tot) {
-      drawSymbol(page, bold, l.component, 52, H - y - 3, 0, 4, H);
-      line([
-        { t: l.component.code, x: 80 }, { t: l.component.name.slice(0, 85), x: 130 }, { t: l.component.control, x: 560 }, { t: unitOf(l.component), x: 650 },
-        { t: String(l.qty), x: 690, w: 100, right: true },
-        ...(anySingle ? [{ t: l.qtySingle ? String(l.qtySingle) : '–', x: 800, w: 100, right: true }] : []),
-        { t: String(l.qtyAll), x: 910, w: 110, right: true, f: bold },
-      ]);
-      if (y < 50) newPage();
-    }
-    y -= 14;
+  // Legend only: every component used on the drawings, no quantities.
+  const used = totals(data, placedItems(data)).map((l) => l.component);
+  if (!used.length) {
+    out.removePage(out.getPageCount() - 1);
+    return;
   }
-  if (anySingle) page.drawText(`Rooms counted for 1 duplex only: ${(data.singleRooms ?? []).join(', ') || 'none'}. Individual components can override their room in Properties.`.slice(0, 300), { x: 40, y: 30, size: 7, font });
+  page.drawText(`${project.name} – legend`, { x: 40, y, size: 16, font: bold });
+  y -= 28;
+  const header = () =>
+    line([{ t: 'Symbol', x: 40, f: bold }, { t: 'Code', x: 90, f: bold }, { t: 'Component', x: 150, f: bold }, { t: 'Control', x: 640, f: bold }, { t: 'Unit', x: 760, f: bold }], 9);
+  header();
+  y -= 4;
+  for (const c of used) {
+    if (y < 50) {
+      newPage();
+      header();
+      y -= 4;
+    }
+    drawSymbol(page, bold, c, 55, H - y - 3, 0, 5, H);
+    line([{ t: c.code, x: 90 }, { t: fit(c.name, font, 9, 480), x: 150 }, { t: c.control, x: 640 }, { t: unitOf(c), x: 760 }], 9);
+    y -= 3;
+  }
+}
+
+function fit(t: string, f: PDFFont, size: number, w: number) {
+  if (f.widthOfTextAtSize(t, size) <= w) return t;
+  while (t && f.widthOfTextAtSize(t + '...', size) > w) t = t.slice(0, -1);
+  return t.trimEnd() + '...';
 }
 
 const unitOf = (c: Component) => (c.symbol === 'profile' || c.symbol === 'loop' ? 'm' : 'each');
